@@ -456,7 +456,17 @@
     // Refresh from the debugger window's own timer: browsers slow down timers in the
     // main page while the debugger window has focus.
     state.timer = w.setInterval(tick, 100);
+    // Keep the game running while the game window gets no animation frames of its own
+    // (Chrome treats a window covered by another one as hidden and stops its frames).
+    var pumpFrame = function () {
+      if (state.view && state.view.win === w && !w.closed) {
+        var a = arena(); if (a && a.pump) a.pump();
+        w.requestAnimationFrame(pumpFrame);
+      }
+    };
+    w.requestAnimationFrame(pumpFrame);
   }
+  function isOpen() { return !!(state.view && state.win && !state.win.closed); }
 
   // Split one CSV line into fields (handles "quoted, fields").
   function csvFields(line) {
@@ -490,6 +500,6 @@
     return { added: added, skipped: skipped };
   }
 
-  globalThis.__debugger = { open: open, importCsv: function (t, ty) { syncPlatform(); return importCsv(t, ty || 'u16'); } };
+  globalThis.__debugger = { open: open, isOpen: isOpen, importCsv: function (t, ty) { syncPlatform(); return importCsv(t, ty || 'u16'); } };
   globalThis.__ramViewer = globalThis.__debugger;   // older name
 })();

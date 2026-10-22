@@ -927,6 +927,7 @@ var BASE = `${globalThis.__BASE}`,
   startStateHash = null,
   controllerPause = null,
   helpPause = null,
+  lastAdvance = 0,
   freezes = new Map(), // frozen work-RAM bytes: address -> value, rewritten after every frame
   ramEdited = !1; // RAM was changed this game, so replay recording has stopped
 
@@ -1245,29 +1246,37 @@ function drawFrame() {
     c.getContext(`2d`, { alpha: !1 }).putImageData(new ImageData(v.data, v.width, v.height), 0, 0));
 }
 // Fixed-step loop: run whole emulator frames for the time that has passed (at most 5 per tick).
-function frameLoop(ts) {
+function advance(now) {
+  let dt = lastTs === null ? 0 : Math.max(0, now - lastTs);
+  if (((lastTs = lastAdvance = now), paused)) return;
+  let step = 1e3 / (emu.fps ?? 59.922743),
+    mask = platformInfo(config.platform).mask;
+  acc = Math.min(acc + dt, step * 5);
+  for (let n = 0; acc >= step && n++ < 5; ) {
+    if (!runFrame(mask)) {
+      acc = 0;
+      break;
+    }
+    (audio.push(emu.audio(), emu.audioRate), (acc -= step));
+  }
+  drawFrame();
+}
+function frameLoop() {
   if (phase === `playing`)
     try {
-      if (!Number.isFinite(ts)) {
-        ((lastTs = null), (raf = requestAnimationFrame(frameLoop)));
-        return;
-      }
-      let dt = lastTs === null ? 0 : Math.max(0, ts - lastTs);
-      if (((lastTs = ts), !paused)) {
-        let step = 1e3 / (emu.fps ?? 59.922743),
-          mask = platformInfo(config.platform).mask;
-        acc = Math.min(acc + dt, step * 5);
-        for (let n = 0; acc >= step && n++ < 5; ) {
-          let ran = runFrame(mask);
-          if (!ran) {
-            acc = 0;
-            break;
-          }
-          (audio.push(emu.audio(), emu.audioRate), (acc -= step));
-        }
-        drawFrame();
-      }
-      raf = requestAnimationFrame(frameLoop);
+      (advance(performance.now()), (raf = requestAnimationFrame(frameLoop)));
+    } catch (e) {
+      fail(e);
+    }
+}
+// Browsers stop animation frames in a page that is hidden (for example when the debugger
+// window covers the game window). The debugger calls this on each of its own animation
+// frames, so the game keeps running whenever this page gets none.
+function pump() {
+  let now = performance.now();
+  if (phase === `playing` && now - lastAdvance > 50)
+    try {
+      advance(now);
     } catch (e) {
       fail(e);
     }
@@ -1360,7 +1369,8 @@ function onHelpClose() {
   document.addEventListener(`king94-help-open`, onHelpOpen),
   document.addEventListener(`king94-help-close`, onHelpClose),
   document.addEventListener(`visibilitychange`, () => {
-    document.hidden && phase === `playing` && !paused && k(`pause-match`).click();
+    // Pause when the tab is hidden, unless the debugger is open: it keeps the game running.
+    document.hidden && phase === `playing` && !paused && !globalThis.__debugger?.isOpen() && k(`pause-match`).click();
   }),
   document.addEventListener(`click`, (e) => {
     phase === `playing` &&
@@ -1456,6 +1466,7 @@ globalThis.__arena = Object.freeze({
   },
   setPaused,
   step: stepFrames,
+  pump,
   writeRam,
   freezeRam,
   unfreezeRam,

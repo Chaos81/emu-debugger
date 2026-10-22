@@ -101,3 +101,9 @@ DEBUGGER
   - Frozen bytes are rewritten after every emulated frame (live play, steps and replay playback) and are
     cleared when the game ends. Any RAM change stops replay recording for that game, since replays store
     only inputs; Save replay keeps the part recorded before the change.
+
+FIX: Pause / Resume in the debugger sometimes needed several clicks
+  When the debugger window covered the game window, Chrome treated the game page as hidden: it stopped
+  the game's frame loop and the auto-pause-when-hidden rule paused the game, so Resume appeared to do
+  nothing. The debugger window now drives the game loop from its own animation frames whenever the game
+  page gets none, and the game no longer auto-pauses on a hidden tab while the debugger is open.
