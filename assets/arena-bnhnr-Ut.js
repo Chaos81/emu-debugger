@@ -281,8 +281,7 @@ function ne(e, t) {
     }
   );
 }
-var re = (e) => new TextEncoder().encode(e),
-  ie = {
+var ie = {
     genesis: { game: `NHL94`, console: `Genesis`, base: 16711680, size: 65536, endian: `big` },
     snes: { game: `NHL94`, console: `SNES`, base: 8257536, size: 131072, endian: `little` },
     nhl95: { game: `NHL95`, console: `Genesis`, base: 16711680, size: 65536, endian: `big` },
@@ -351,20 +350,6 @@ function ae(e, t, n) {
     o && e.load(o);
   }
 }
-function oe(e) {
-  let t = Math.ceil(e.length / 8) * 8,
-    n = new Uint8Array(24 + t),
-    r = new DataView(n.buffer);
-  return (
-    n.set(re(`RASTATE`)),
-    (n[7] = 1),
-    n.set(re(`MEM `), 8),
-    r.setUint32(12, e.length, !0),
-    n.set(e, 16),
-    n.set(re(`END `), 16 + t),
-    n
-  );
-}
 function se(e) {
   let t = 4294967295;
   for (let n of e) {
@@ -372,123 +357,6 @@ function se(e) {
     for (let e = 0; e < 8; e++) t = (t >>> 1) ^ (t & 1 ? 3988292384 : 0);
   }
   return (t ^ 4294967295) >>> 0;
-}
-function ce(e) {
-  let t = 0,
-    n = [],
-    r = [];
-  for (let [i, a] of e) {
-    let e = re(i),
-      o = se(a),
-      s = new Uint8Array(30 + e.length),
-      c = new DataView(s.buffer);
-    (c.setUint32(0, 67324752, !0),
-      c.setUint16(4, 20, !0),
-      c.setUint16(12, 33, !0),
-      c.setUint32(14, o, !0),
-      c.setUint32(18, a.length, !0),
-      c.setUint32(22, a.length, !0),
-      c.setUint16(26, e.length, !0),
-      s.set(e, 30));
-    let l = new Uint8Array(46 + e.length),
-      u = new DataView(l.buffer);
-    (u.setUint32(0, 33639248, !0),
-      u.setUint16(4, 20, !0),
-      u.setUint16(6, 20, !0),
-      u.setUint16(14, 33, !0),
-      u.setUint32(16, o, !0),
-      u.setUint32(20, a.length, !0),
-      u.setUint32(24, a.length, !0),
-      u.setUint16(28, e.length, !0),
-      u.setUint32(42, t, !0),
-      l.set(e, 46),
-      n.push(s, a),
-      r.push(l),
-      (t += s.length + a.length));
-  }
-  let i = r.reduce((e, t) => e + t.length, 0),
-    a = new Uint8Array(22),
-    o = new DataView(a.buffer);
-  (o.setUint32(0, 101010256, !0),
-    o.setUint16(8, e.length, !0),
-    o.setUint16(10, e.length, !0),
-    o.setUint32(12, i, !0),
-    o.setUint32(16, t, !0));
-  let s = new Uint8Array(t + i + a.length),
-    c = 0;
-  for (let e of [...n, ...r, a]) (s.set(e, c), (c += e.length));
-  return s;
-}
-function le(e, t) {
-  return `nhl-${e.platform}-${e.config.homeTeam}-${e.config.awayTeam}-${e.capturedAt.replace(/[:.]/g, `-`)}.${t}`;
-}
-function ue(e) {
-  if (![`genesis`, `snes`].includes(e.metadata.platform))
-    throw Error(`NHL94Online export is for NHL ’94 Genesis and SNES.`);
-  return {
-    filename: le(e.metadata, `state`),
-    bytes: oe(e.native),
-    mime: `application/octet-stream`,
-  };
-}
-async function de(e) {
-  let t = oe(e.native),
-    n = async (e) =>
-      Array.from(new Uint8Array(await globalThis.crypto.subtle.digest(`SHA-256`, e)), (e) =>
-        e.toString(16).padStart(2, `0`),
-      ).join(``),
-    [r, i] = await Promise.all([n(t), n(e.ram)]),
-    a = {
-      ...e.metadata,
-      files: {
-        "match.state": {
-          format: `RetroArch RASTATE v1 / native core MEM`,
-          bytes: t.length,
-          sha256: r,
-        },
-        "match.ram": { bytes: e.ram.length, sha256: i },
-      },
-    };
-  return {
-    filename: le(a, `zip`),
-    bytes: ce([
-      [`match.state`, t],
-      [`match.ram`, e.ram],
-      [`match.json`, re(JSON.stringify(a, null, 2))],
-      [
-        `README.txt`,
-        re(`Match stat export
-
-Save after the final whistle at Three Stars or the final game summary, BEFORE leaving for the main menu. Mid-game, mercy, manual endings and highlights may be incomplete or rejected by league tools. The site does not detect full time automatically.
-
-Extract this ZIP first. match.state is an uncompressed RetroArch state containing the exact serialized state from the core identified in match.json. Use the same game revision and emulator core. No ROM is included.
-
-Genesis NHL94: Chaos81's extractor documents RetroArch 1.10+ Genesis Plus GX states; this file uses that container and RAM placement. End-game acceptance by external uploaders still needs verification.
-SNES NHL94: this site uses Snes9x2010 snapshot version 10, which differs from regular Snes9x/ZSNES. Do not rename it to a ZSNES state. Existing league parser compatibility is unverified.
-Genesis NHL95: NHL95.net advertises RetroArch Genesis states; acceptance of this site's exports is unverified. NHL94 stat offsets must not be reused for NHL95.
-
-match.ram contains full work RAM in console address order (Genesis words big-endian; SNES words little-endian). It retains player and scoring tables for community extractor authors. match.json includes verified adapter summary fields, game/core/ROM identity, teams, frame and capture context. These are client captures, not authenticated tournament results.
-
-Downloads are created on your device. No save state or RAM is uploaded to the server. The last capture for each game is retained only in this tab; download before closing or reloading it.
-
-Community references:
-https://www.nhl94online.com/html/rules.php
-https://github.com/Chaos81/nhl94-stat-extractor
-https://www.nhl95.net/upload
-`),
-      ],
-    ]),
-  };
-}
-function fe(e) {
-  let t = URL.createObjectURL(new Blob([e.bytes], { type: e.mime || `application/zip` })),
-    n = document.createElement(`a`);
-  ((n.href = t), (n.download = e.filename), document.body.append(n));
-  try {
-    n.click();
-  } finally {
-    (n.remove(), setTimeout(() => URL.revokeObjectURL(t), 1e4));
-  }
 }
 var pe = (e) => new TextDecoder().decode(e);
 function me(e) {
@@ -565,79 +433,6 @@ function ge(e, t, n) {
       `State format does not match this emulator core. Use a state exported by this site for the selected game.`,
     );
   return (e.load({ bytes: t, frame: 0 }), n(), e.info());
-}
-var _e = `https://www.nhl94online.com/`,
-  ve = (e) => e === `genesis` || e === `snes`;
-function ye(e) {
-  if (typeof e != `string` || e.length > 1e3)
-    throw Error(`Paste your full NHL94Online coach-page link.`);
-  if (!e.trim()) return ``;
-  let t;
-  try {
-    t = new URL(e.trim());
-  } catch {
-    throw Error(`Paste your full NHL94Online coach-page link.`);
-  }
-  if (
-    t.protocol !== `https:` ||
-    ![`nhl94online.com`, `www.nhl94online.com`].includes(t.hostname) ||
-    t.port ||
-    t.username ||
-    t.password ||
-    t.pathname !== `/html/coachpage.php`
-  )
-    throw Error(`Use an HTTPS coach-page link from NHL94Online.com.`);
-  let n = t.searchParams.get(`lg`),
-    r = t.searchParams.get(`team_ID`),
-    i = t.searchParams.get(`sublg`);
-  if (
-    !/^[1-9]\d{0,8}$/.test(n || ``) ||
-    !/^[1-9]\d{0,8}$/.test(r || ``) ||
-    !i ||
-    !/^[A-Za-z0-9 -]{1,30}$/.test(i)
-  )
-    throw Error(`Copy the coach-page link with its league, level and team.`);
-  let a = new URL(`html/coachpage.php`, _e);
-  return (
-    a.searchParams.set(`lg`, n),
-    a.searchParams.set(`sublg`, i),
-    a.searchParams.set(`team_ID`, r),
-    a.href
-  );
-}
-function be(e) {
-  if (e === void 0)
-    try {
-      e = globalThis.localStorage;
-    } catch {
-      e = null;
-    }
-  let t = new Map(),
-    n = (e) => `king94-nhl94online-coach-` + e + `-v1`;
-  return {
-    get(r) {
-      if (!ve(r)) return ``;
-      if (!t.has(r)) {
-        let i = ``;
-        try {
-          i = ye(e?.getItem(n(r)) || ``);
-        } catch {}
-        t.set(r, i);
-      }
-      return t.get(r);
-    },
-    set(r, i) {
-      if (!ve(r)) throw Error(`NHL94Online export is for NHL ’94 Genesis and SNES.`);
-      let a = ye(i);
-      t.set(r, a);
-      let o = !1;
-      try {
-        if (!e) throw Error(`Storage unavailable`);
-        (a ? e.setItem(n(r), a) : e.removeItem(n(r)), (o = !0));
-      } catch {}
-      return { url: a, persisted: o };
-    },
-  };
 }
 var xe = Object.freeze([`genesis`, `snes`, `nhl95`]),
   Se = (e) => xe.includes(e),
@@ -1509,7 +1304,7 @@ var pr = class {
       ((this.context = null), (this.next = 0), (this.attempt = 0), (this.gain = null));
       let v = NaN;
       try {
-        v = parseFloat(localStorage.getItem(`nhl94online-volume`));
+        v = parseFloat((localStorage.getItem(`emu-debugger-volume`) ?? localStorage.getItem(`nhl94online-volume`)));
       } catch {}
       ((this.volume = Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 1),
         (this.muted = !1));
@@ -1518,7 +1313,7 @@ var pr = class {
       ((this.volume = Math.min(1, Math.max(0, +v || 0))),
         m !== void 0 && (this.muted = !!m));
       try {
-        localStorage.setItem(`nhl94online-volume`, String(this.volume));
+        localStorage.setItem(`emu-debugger-volume`, String(this.volume));
       } catch {}
       this.applyVolume();
     }
@@ -2070,9 +1865,6 @@ var hi = `modulepreload`,
   ga = null,
   _a = null,
   Sa = new Map(),
-  Ca = !1,
-  wa = be(),
-  Ta = null,
   q = null,
   Ea = null,
   J = !1,
@@ -2189,69 +1981,6 @@ function Ia(e) {
       Sa.set(z.platform, Fa(e));
     } catch {}
 }
-function La() {
-  if (j === `preparing`) throw Error(`Wait for game preparation to finish before exporting stats.`);
-  let e = Sa.get(z.platform),
-    t = F && e?.metadata.matchId !== H ? null : e,
-    n =
-      F && [`lineup`, `playing`].includes(j)
-        ? Fa(`player-request`)
-        : t || (F && j === `finished` ? Fa(ra || `ended`) : null);
-  if (!n) throw Error(`Start a match before saving stats.`);
-  return (Sa.set(n.metadata.platform, n), n);
-}
-async function Ra() {
-  if (!Ca) {
-    ((Ca = !0), Z());
-    try {
-      (fe(await de(La())),
-        Y(
-          `Stats ZIP downloaded. Extract it for the save state, game memory and match details. Save final stats at Three Stars or the final summary.`,
-        ));
-    } catch (e) {
-      Y(`Could not save stats: ` + e.message);
-    } finally {
-      ((Ca = !1), Z());
-    }
-  }
-}
-function za() {
-  let e = ve(z.platform);
-  k(`nhl94online-tools`).hidden = !e;
-  for (let t of [`export-nhl94online`, `export-nhl94online-in-game`]) {
-    let n = k(t);
-    ((n.hidden = !e), (n.disabled = k(`save-stats`).disabled || !e));
-  }
-  e &&
-    (Ta !== z.platform &&
-      ((Ta = z.platform),
-      (k(`nhl94online-coach-url`).value = wa.get(z.platform)),
-      (k(`nhl94online-link-status`).textContent = ``)),
-    (k(`nhl94online-coach-label`).textContent =
-      `Your ${z.platform === `snes` ? `SNES` : `Genesis`} coach-page link (optional)`),
-    (k(`nhl94online-open`).href = wa.get(z.platform) || `https://www.nhl94online.com/`),
-    (k(`nhl94online-compatibility`).textContent =
-      z.platform === `snes`
-        ? `SNES format check needed: our Snes9x2010 states differ from regular Snes9x. NHL94Online acceptance has not been verified.`
-        : `Genesis format check needed: NHL94Online acceptance of our exported states has not been verified.`));
-}
-function Ba() {
-  if (!Ca) {
-    try {
-      if (!ve(z.platform)) throw Error(`NHL94Online export is for NHL ’94 Genesis and SNES.`);
-      let e = ue(La());
-      (fe(e),
-        (k(`nhl94online-tools`).open = !0),
-        k(`nhl94online-open`).click(),
-        Y(
-          `Download requested: ${e.filename}. On NHL94Online, choose the matching scheduled game, select this file, enter your password there and upload once. If no new tab opened, use Open coach page below.`,
-        ));
-    } catch (e) {
-      Y(`Could not export for NHL94Online: ` + e.message);
-    }
-    Z();
-  }
-}
 function Y(e) {
   k(`setup-status`).textContent = e;
 }
@@ -2350,16 +2079,7 @@ function Z() {
       : j === `finished`
         ? `BACK TO SETUP`
         : `END GAME`));
-  for (let e of [`save-stats`, `save-stats-in-game`]) {
-    let t = k(e);
-    ((t.disabled =
-      Ca ||
-      j === `preparing` ||
-      !((F && [`lineup`, `playing`, `finished`].includes(j)) || Sa.has(z.platform))),
-      (t.textContent = Ca ? `Saving…` : j === `lobby` ? `Save last stats` : `Save stats`));
-  }
-  (za(),
-    Ma(),
+  (Ma(),
     (k(`pause-match`).disabled = j !== `playing`),
     (k(`pause-match`).textContent = W ? `Resume` : `Pause`),
     (k(`session-status`).textContent =
@@ -2943,25 +2663,7 @@ for (let e of [0, 1])
       [`lineup`, `playing`].includes(j) && fo(uo());
     }),
   ));
-for (let e of [`save-stats`, `save-stats-in-game`]) k(e).addEventListener(`click`, Ra);
-for (let e of [`export-nhl94online`, `export-nhl94online-in-game`])
-  k(e).addEventListener(`click`, Ba);
-(k(`nhl94online-coach-form`).addEventListener(`submit`, (e) => {
-  e.preventDefault();
-  try {
-    let e = wa.set(z.platform, k(`nhl94online-coach-url`).value);
-    ((k(`nhl94online-coach-url`).value = e.url),
-      (k(`nhl94online-link-status`).textContent = e.url
-        ? e.persisted
-          ? `Coach-page link saved on this device.`
-          : `Coach-page link kept for this visit; browser storage is unavailable.`
-        : `Saved coach-page link cleared. NHL94Online will open its home page.`),
-      za());
-  } catch (e) {
-    k(`nhl94online-link-status`).textContent = e.message;
-  }
-}),
-  k(`pause-match`).addEventListener(
+(  k(`pause-match`).addEventListener(
     `click`,
     $(async () => {
       j === `playing` &&

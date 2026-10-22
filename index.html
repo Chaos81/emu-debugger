@@ -10,7 +10,7 @@
   <script type="module" crossorigin src="./assets/arena-bnhnr-Ut.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/shared.js">
   <link rel="stylesheet" crossorigin href="./assets/arena-Bwve1r6i.css">
-<style>.site-header{height:auto;min-height:0;padding-top:10px;padding-bottom:10px}.site-header .brand{flex:0 1 750px;min-width:0}.site-header .brand img{width:100%;max-width:750px;height:auto;display:block}.site-header nav{flex-shrink:0}.prototype-limits{margin-top:20px}@media(max-width:700px){.site-header{flex-wrap:wrap;justify-content:center}.site-header .brand{flex:1 1 100%}.site-header nav{flex-wrap:wrap;justify-content:center}}.game-overlay{flex-direction:column;gap:4px}.console-art{display:none;position:relative;z-index:1;width:min(82%,600px);max-height:68%;object-fit:contain}#arena[data-platform=genesis] .console-genesis,#arena[data-platform=snes] .console-snes{display:block}.screen-copy{padding:8px 25px}#game-message{font-size:15px;max-width:420px}.screen-tag{margin-top:12px}.workspace{margin-top:26px}
+<style>.site-header{height:auto;min-height:0;padding-top:10px;padding-bottom:10px}.site-header nav{flex-shrink:0}.prototype-limits{margin-top:20px}@media(max-width:700px){.site-header{flex-wrap:wrap;justify-content:center}.site-header nav{flex-wrap:wrap;justify-content:center}}.game-overlay{flex-direction:column;gap:4px}.console-art{display:none;position:relative;z-index:1;width:min(82%,600px);max-height:68%;object-fit:contain}#arena[data-platform=genesis] .console-genesis,#arena[data-platform=snes] .console-snes{display:block}.screen-copy{padding:8px 25px}#game-message{font-size:15px;max-width:420px}.screen-tag{margin-top:12px}.workspace{margin-top:26px}
 .volume-control{display:inline-flex;align-items:center;gap:.5rem;margin-left:.25rem}
 .volume-control input[type=range]{width:110px;accent-color:#2563eb;cursor:pointer}
 .volume-control output{min-width:3ch;font-size:.8rem;opacity:.8}
@@ -19,10 +19,10 @@
 .setup-panel.setup-collapsed>:not(.panel-title){display:none}.setup-panel.setup-collapsed .panel-title{margin-bottom:12px}.setup-toggle{margin-left:auto}
 </style></head>
 <body>
-  <a class="skip-link" href="#setup">Skip to match setup</a>
+  <a class="skip-link" href="#setup">Skip to setup</a>
   <header class="site-header">
-    <a class="brand" href="#" aria-label="NHL ’94 Online"><img src="./assets/header.gif" width="750" height="147" alt="NHL ’94 Online · Gens &amp; SNES · Est. Fall 2005" /></a>
-    <nav aria-label="Main navigation"><a href="#arena" class="active">The arena</a><button id="help-open" class="nav-help" type="button" aria-haspopup="dialog" aria-controls="help-dialog"><span class="help-label-long">Help &amp; how-tos</span><span class="help-label-short">Help</span></button><a href="https://www.nhl94online.com" target="_blank" rel="noopener noreferrer">NHL94Online ↗</a></nav>
+    <a class="brand" href="#"><span>EMU DEBUGGER<span class="brand-subtitle">GENESIS &amp; SNES</span></span></a>
+    <nav aria-label="Main navigation"><a href="#arena" class="active">Emulator</a><button id="help-open" class="nav-help" type="button" aria-haspopup="dialog" aria-controls="help-dialog"><span class="help-label-long">Help &amp; how-tos</span><span class="help-label-short">Help</span></button></nav>
     <span class="build-badge"><span class="status-dot"></span>EARLY PROTOTYPE</span>
   </header>
     <main>
@@ -117,7 +117,7 @@
 
                 <details class="controls"><summary><span>Controller &amp; keyboard guide</span><span>Open guide <span aria-hidden="true">+</span></span></summary><div class="controls-grid"><div><h3>Player one</h3><p><kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd> Move<br /><kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> Sega A / B / C<br />SNES: <kbd>A</kbd> A · <kbd>S</kbd> B · <kbd>Q</kbd> Y · <kbd>W</kbd> X (goalie)<br /><kbd>E</kbd> L · <kbd>R</kbd> R<br /><kbd>Enter</kbd> Start / pause</p></div><div><h3>Player two</h3><p><kbd>I</kbd> <kbd>K</kbd> <kbd>J</kbd> <kbd>L</kbd> Move<br /><kbd>Z</kbd> <kbd>X</kbd> <kbd>C</kbd> Sega A / B / C<br />SNES: <kbd>Z</kbd> A · <kbd>X</kbd> B · <kbd>U</kbd> Y · <kbd>O</kbd> X (goalie)<br /><kbd>N</kbd> L · <kbd>M</kbd> R<br /><kbd>Right Shift</kbd> Start / pause</p></div><div><h3>Prefer a controller?</h3><p>Connect a gamepad and press a button. If the buttons feel wrong (common with 8BitDo and other Genesis-style pads), choose <strong>Controller</strong> at any time, including menus or mid-match and press each button once. Your layout is saved in this browser. Start works in the lineup, during play, and between periods. Press <kbd>F</kbd> or double-click the game for full screen. Desktop browser recommended.</p></div></div></details>
   </main>
-  <footer><span class="footer-brand">NHL94Online.com Gaming</span><p><a href="https://github.com/ekeeke/Genesis-Plus-GX">Genesis license</a> · <a href="https://github.com/ekeeke/Genesis-Plus-GX">Genesis source</a> · <a href="https://github.com/libretro/snes9x2010">SNES license</a> · <a href="https://github.com/libretro/snes9x2010">SNES source</a></p></footer>
+  <footer><span class="footer-brand">EMU DEBUGGER</span><p><a href="https://github.com/ekeeke/Genesis-Plus-GX">Genesis license</a> · <a href="https://github.com/ekeeke/Genesis-Plus-GX">Genesis source</a> · <a href="https://github.com/libretro/snes9x2010">SNES license</a> · <a href="https://github.com/libretro/snes9x2010">SNES source</a></p></footer>
   <dialog id="controller-dialog" class="controller-dialog" aria-labelledby="controller-dialog-title">
     <h2 id="controller-dialog-title">Controller setup</h2>
     <p id="controller-session-note" class="field-help" role="status"></p>

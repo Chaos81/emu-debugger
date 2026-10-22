@@ -25,14 +25,15 @@
 
   function arena() { return globalThis.__arena || null; }
   function hex(n, w) { var s = n.toString(16).toUpperCase(); while (s.length < w) s = '0' + s; return s; }
-  function storeKey() { return 'nhl94online-ramwatch-' + state.platform; }
+  function storeKey() { return 'emu-debugger-ramwatch-' + state.platform; }
+  function oldKey() { return 'nhl94online-ramwatch-' + state.platform; }   // before the rename; read once
   function save() {
     try { localStorage.setItem(storeKey(), JSON.stringify(state.watches.map(function (w) { return { label: w.label, addr: w.addr, type: w.type }; }))); } catch (e) {}
   }
   function load() {
     state.watches = [];
     try {
-      var list = JSON.parse(localStorage.getItem(storeKey()) || '[]');
+      var list = JSON.parse(localStorage.getItem(storeKey()) || localStorage.getItem(oldKey()) || '[]');
       list.forEach(function (w) { if (w && TYPES[w.type] && typeof w.addr === 'number') state.watches.push({ id: state.nextId++, label: String(w.label || '').slice(0, 30), addr: w.addr, type: w.type }); });
     } catch (e) {}
   }
@@ -238,7 +239,7 @@
   function popOut() {
     var w = state.popup;
     if (w && !w.closed) { w.focus(); return; }
-    w = window.open('', 'nhl94online-ramviewer', 'width=560,height=680,resizable=yes,scrollbars=yes');
+    w = window.open('', 'emu-debugger-ramviewer', 'width=560,height=680,resizable=yes,scrollbars=yes');
     if (!w) { alert('The pop-up was blocked. Allow pop-ups for this site, then click RAM viewer again.'); return; }
     state.popup = w; syncPlatform();
     w.document.open();

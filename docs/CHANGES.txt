@@ -69,3 +69,10 @@ ONLINE PLAY REMOVED (emu-debugger)
   (system and ROM, then Start). Both controller ports are always live, so two players can play on
   one computer. Reset emulator works in every game. The ROM's CRC32 is shown once it loads.
   Old .replay and .state files still load.
+
+NHL94ONLINE BRANDING REMOVED
+  The header image and the NHL94Online link are replaced by a plain "EMU DEBUGGER" title; the
+  footer reads "EMU DEBUGGER". Removed the NHL94Online coach-page export and the league stats ZIP
+  (neither had a button on the page). Browser storage keys are now emu-debugger-volume and
+  emu-debugger-ramwatch-<system>; the old nhl94online-* values are still read, so saved volume and
+  RAM watch lists carry over.
