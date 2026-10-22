@@ -4,7 +4,11 @@ import createSNES from './core/snes.mjs';
 export const CORE_VERSION = 'snes9x2010-fe690dd-king94-v1';
 export const BUTTONS = ['B', 'A', 'R', 'START', 'UP', 'DOWN', 'LEFT', 'RIGHT', '', 'Y', 'X', 'L'];
 const RAM_BASE = 0x7E0000;
-const WARM_FRAMES = 2;   // Fixed startup convention covered by SNES core acceptance tests.
+const WARM_FRAMES = 2;
+// Address of Registers (struct SRegisters, snes9x2010 src/65c816.h) inside this build's
+// WebAssembly memory; ICPU's live N/Z/C/V flags sit 16..13 bytes before it. Located and checked
+// with test ROMs for core/snes.wasm only; the main page offers registers only for that build.
+const REGS = 302124;   // Fixed startup convention covered by SNES core acceptance tests.
 
 export async function sha256Hex(bytes) {
   const d = await crypto.subtle.digest('SHA-256', bytes);
@@ -86,6 +90,14 @@ export class SNES {
     const ram = this.M.HEAPU8.subarray(this.ram, this.ram + this.ramSize);
     for (const b of ram) h = Math.imul(h ^ b, 16777619) >>> 0;
     return h;
+  }
+
+  /** 65816 registers as of the end of the last frame (between two instructions). */
+  registers() {
+    const H = this.M.HEAPU8, R = REGS, w = o => H[R + o] | (H[R + o + 1] << 8);
+    // Registers.P is only packed now and then; N, Z, C and V live in ICPU (S9xPackStatus()).
+    const P = (H[R + 2] & ~0xC3) | (H[R - 16] & 1) | (H[R - 15] === 0 ? 2 : 0) | (H[R - 14] & 0x80) | ((H[R - 13] & 1) << 6);
+    return { cpu: '65816', A: w(4), X: w(10), Y: w(12), S: w(8), D: w(6), DB: H[R], PB: H[R + 18], PC: w(16), P, E: (H[R + 3] & 1) === 1 };
   }
 
   byte(addr) { return this.M.HEAPU8[this.ram + (addr >= RAM_BASE ? addr - RAM_BASE : addr)]; }

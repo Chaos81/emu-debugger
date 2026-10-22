@@ -151,7 +151,6 @@
     '.sys{font-size:11px;letter-spacing:.08em;border:1px solid #3a4a6b;border-radius:4px;padding:1px 6px;color:#cbd5e1}' +
     '.msg{margin:0;padding:.35rem .8rem;min-height:1.9em;color:#475569;border-bottom:1px solid var(--line);background:#fff}.msg.bad{color:var(--bad)}' +
     '.cols{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:.8rem;padding:.8rem}' +
-    '@media(max-width:820px){.cols{grid-template-columns:1fr;overflow:auto}}' +
     '.pane{background:#fff;border:1px solid var(--line);border-radius:8px;padding:.7rem .8rem;display:flex;flex-direction:column;min-height:0}' +
     '.pane h2{margin:0 0 .5rem;font-size:11px;letter-spacing:.08em;color:var(--muted)}' +
     '.row{display:flex;gap:.4rem;flex-wrap:wrap;align-items:center;margin:0 0 .45rem}' +
@@ -172,7 +171,18 @@
     '.b input{width:2.6ch;padding:0;border:1px solid var(--accent);border-radius:2px;font:inherit;text-align:center;text-transform:uppercase}' +
     '.hint{color:var(--muted);font-size:12px;margin:.5rem 0 0}' +
     'kbd{font:11px ui-monospace,Menlo,Consolas,monospace;border:1px solid #cbd5e1;border-bottom-width:2px;border-radius:3px;padding:0 4px;background:#fff}' +
-    '.foot{padding:0 .8rem .6rem;color:var(--muted);font-size:12px}';
+    '.foot{padding:0 .8rem .6rem;color:var(--muted);font-size:12px}' +
+    '.stack{display:flex;flex-direction:column;gap:.8rem;min-height:0}.stack>.pane:first-child{flex:none}.stack>.pane:last-child{flex:1}' +
+    '.pane h2 .cpu{margin-left:.4rem;font-weight:400;letter-spacing:0;text-transform:none}' +
+    '.regs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.15rem .9rem;font:12px/1.6 ui-monospace,Menlo,Consolas,monospace}' +
+    '.rg{display:flex;gap:.5ch;white-space:nowrap}.rg b{color:var(--muted);font-weight:400;min-width:3.2ch}.rg span{border-radius:2px;padding:0 2px}' +
+    '.rg span.chg{background:var(--chg)}.rg span.go{cursor:pointer;text-decoration:underline dotted #94a3b8}.rg span.go:hover{background:#f1f5f9}' +
+    '.flags{grid-column:1/-1;display:flex;gap:.3rem;flex-wrap:wrap;align-items:center;margin-top:.25rem}' +
+    '.fl{display:inline-block;min-width:2.2ch;text-align:center;border:1px solid var(--line);border-radius:3px;color:#94a3b8;padding:0 3px}.fl.on{background:var(--ink);border-color:var(--ink);color:#fff}' +
+    '.mode{color:var(--muted);margin-left:.4rem;font-family:Arial,Helvetica,sans-serif}' +
+    '.regs .none{grid-column:1/-1;color:var(--muted);font-family:Arial,Helvetica,sans-serif}' +
+    // Narrow window: one column, panes keep their natural height and the page scrolls (keep last).
+    '@media(max-width:820px){.cols{grid-template-columns:1fr;overflow:auto}.stack,.pane{min-height:auto}.stack>.pane:last-child{flex:none}.scroll{flex:none;max-height:22rem}}';
 
   function build(w) {
     var doc = w.document;
@@ -185,13 +195,15 @@
       '<div class="state"><span id="dot" class="dot"></span><b id="runstate">No game</b><span>frame <b id="frame">—</b></span><span id="sys" class="sys"></span></div>' +
       '</header>' +
       '<p id="msg" class="msg" role="status" aria-live="polite"></p>' +
-      '<main class="cols">' +
+      '<main class="cols"><div class="stack">' +
+      '<section class="pane"><h2>REGISTERS<span id="cpu" class="cpu"></span></h2><div id="regs" class="regs"></div>' +
+      '<p class="hint">As of the end of the last frame. Click an address register to show it in the memory view.</p></section>' +
       '<section class="pane"><h2>WATCH</h2>' +
       '<form id="wform" class="row"><input id="waddr" class="addr" placeholder="Address (hex)" aria-label="Address" autocomplete="off"><select id="wtype" aria-label="Value type"></select><input id="wlabel" class="lbl" placeholder="Label (optional)" maxlength="30" aria-label="Label"><button type="submit">Watch</button></form>' +
       '<div class="row"><button id="csvin" type="button" title="Each line: Label, address[, type]">Load CSV…</button><button id="csvout" type="button">Save CSV</button><span class="grow"></span><button id="clear" type="button">Clear all</button><input id="csvfile" type="file" accept=".csv,text/csv,text/plain" hidden></div>' +
       '<div class="scroll"><table id="wtable"><thead><tr><th>NAME</th><th>ADDRESS</th><th>TYPE</th><th>VALUE</th><th>HEX</th><th title="Keep this value fixed">FREEZE</th><th></th></tr></thead><tbody id="wbody"></tbody></table><p id="wempty" class="empty"></p></div>' +
       '<p class="hint">Click a value to change it (decimal, or hex like <kbd>$1F</kbd>). Freeze keeps the value fixed every frame.</p>' +
-      '</section>' +
+      '</section></div>' +
       '<section class="pane"><h2>MEMORY</h2>' +
       '<form id="mform" class="row"><button id="mprev" type="button" title="Previous 256 bytes">◀</button><input id="maddr" class="addr" aria-label="Memory address" autocomplete="off"><button type="submit">Go</button><button id="mnext" type="button" title="Next 256 bytes">▶</button><span class="grow"></span><button id="mwatch" type="button" title="Add the first address of this page to the watch list">Watch this address</button></form>' +
       '<div class="scroll"><div id="hexv" class="hexv"></div></div>' +
@@ -205,7 +217,7 @@
       win: w, doc: doc, msg: $('msg'), pause: $('pause'), step1: $('step1'), stepn: $('stepn'), stepN: $('nframes'),
       dot: $('dot'), runstate: $('runstate'), frame: $('frame'), sys: $('sys'),
       wbody: $('wbody'), wtable: $('wtable'), wempty: $('wempty'), wtype: $('wtype'), memAddr: $('maddr'), hexv: $('hexv'),
-      rows: {}, cells: [], editing: null
+      rows: {}, cells: [], editing: null, regs: $('regs'), cpu: $('cpu'), regKind: null, regCells: {}, prevRegs: null
     };
     Object.keys(TYPES).forEach(function (t) { var o = doc.createElement('option'); o.value = t; o.textContent = TYPES[t].label; v.wtype.appendChild(o); });
     v.wtype.value = 'u16';
@@ -284,6 +296,11 @@
     $('mprev').addEventListener('click', function () { setMemAddr(state.memAddr - PAGE); });
     $('mnext').addEventListener('click', function () { setMemAddr(state.memAddr + PAGE); });
     $('mwatch').addEventListener('click', function () { $('waddr').value = hex(state.memAddr, 6); $('waddr').focus(); });
+    v.regs.addEventListener('click', function (e) {
+      var sp = e.target.closest && e.target.closest('span.go'); if (!sp || !v.prevRegs) return;
+      var t = regRamTarget(v.prevRegs, sp.dataset.key);
+      if (t !== null) { setMemAddr(t); say('Memory view: $' + hex(t, 6) + ' (' + sp.dataset.key + ').'); }
+    });
     v.hexv.addEventListener('click', function (e) {
       var b = e.target.closest && e.target.closest('.b');
       if (b && !v.editing) editByte(+b.dataset.i);
@@ -431,13 +448,87 @@
     return true;
   }
 
+  // ---------- registers ----------
+  // Layouts: [label, key, hex digits]; '' leaves a gap. Values come from __arena.registers().
+  var REG_LAYOUT = {
+    '68000': [['D0', 'D0', 8], ['D1', 'D1', 8], ['D2', 'D2', 8], ['D3', 'D3', 8], ['D4', 'D4', 8], ['D5', 'D5', 8], ['D6', 'D6', 8], ['D7', 'D7', 8],
+      ['A0', 'A0', 8], ['A1', 'A1', 8], ['A2', 'A2', 8], ['A3', 'A3', 8], ['A4', 'A4', 8], ['A5', 'A5', 8], ['A6', 'A6', 8], ['A7', 'A7', 8],
+      ['PC', 'PC', 6], ['SR', 'SR', 4], ['USP', 'USP', 8], ['SSP', 'SSP', 8]],
+    '65816': [['A', 'A', 4], ['X', 'X', 4], ['Y', 'Y', 4], ['S', 'S', 4], ['D', 'D', 4], ['DB', 'DB', 2], ['PB', 'PB', 2], ['PC', 'PC', 4], ['P', 'P', 2]]
+  };
+  var FLAGS = {
+    '68000': [['T', 0x8000], ['S', 0x2000], ['X', 0x10], ['N', 0x08], ['Z', 0x04], ['V', 0x02], ['C', 0x01]],
+    '65816': [['N', 0x80], ['V', 0x40], ['M', 0x20], ['X', 0x10], ['D', 0x08], ['I', 0x04], ['Z', 0x02], ['C', 0x01]]
+  };
+  function regValue(r, key) {
+    if (r.cpu === '68000' && /^[DA]\d$/.test(key)) return r[key[0]][+key[1]];
+    return r[key];
+  }
+  // Work-RAM address a register points at, or null.
+  function regRamTarget(r, key) {
+    var c = cfg(), v = regValue(r, key);
+    if (r.cpu === '68000') {
+      if (!/^A\d$|^USP$|^SSP$/.test(key)) return null;
+      v = v & 0xFFFFFF;
+      return v >= 0xE00000 ? c.base | (v & 0xFFFF) : null;
+    }
+    if (key === 'S' || key === 'D' || key === 'X' || key === 'Y') return v < 0x2000 ? c.base + v : null;   // bank 0 mirrors $7E0000-$7E1FFF
+    return null;
+  }
+  function buildRegisters(kind) {
+    var v = state.view, doc = v.doc;
+    v.regs.textContent = ''; v.regCells = {}; v.regKind = kind; v.prevRegs = null;
+    if (!REG_LAYOUT[kind]) return;
+    REG_LAYOUT[kind].forEach(function (d) {
+      var g = doc.createElement('div'), b = doc.createElement('b'), sp = doc.createElement('span');
+      g.className = 'rg'; b.textContent = d[0]; sp.dataset.key = d[1]; g.appendChild(b); g.appendChild(sp);
+      v.regs.appendChild(g); v.regCells[d[1]] = sp;
+    });
+    var f = doc.createElement('div'); f.className = 'flags';
+    FLAGS[kind].forEach(function (d) { var e = doc.createElement('span'); e.className = 'fl'; e.textContent = d[0]; e.title = d[0] + ' flag'; f.appendChild(e); v.regCells['f' + d[0]] = e; });
+    if (kind === '68000') { var im = doc.createElement('span'); im.className = 'mode'; f.appendChild(im); v.regCells.ipl = im; }
+    else { var e = doc.createElement('span'); e.className = 'fl'; e.textContent = 'E'; e.title = 'Emulation mode'; f.appendChild(e); v.regCells.fE = e; var md = doc.createElement('span'); md.className = 'mode'; f.appendChild(md); v.regCells.mode = md; }
+    v.regs.appendChild(f);
+  }
+  function paintRegisters(a) {
+    var v = state.view, r = a && a.registers ? a.registers() : null;
+    if (!r || r.unavailable) {
+      if (v.regKind !== 'none') {
+        v.regs.textContent = ''; v.regKind = 'none'; v.regCells = {}; v.prevRegs = null;
+        var p = v.doc.createElement('p'); p.className = 'none'; v.regs.appendChild(p); v.regCells.none = p;
+      }
+      v.regCells.none.textContent = r ? 'Registers are not available for this emulator build.' : 'Start a game to see the CPU registers.';
+      v.cpu.textContent = '';
+      return;
+    }
+    if (v.regKind !== r.cpu) buildRegisters(r.cpu);
+    v.cpu.textContent = r.cpu === '68000' ? '· Motorola 68000' + (r.stopped ? ' (STOP)' : '') : '· WDC 65816';
+    var prev = v.prevRegs;
+    REG_LAYOUT[r.cpu].forEach(function (d) {
+      var cell = v.regCells[d[1]], val = regValue(r, d[1]), target = regRamTarget(r, d[1]);
+      cell.textContent = hex(val, d[2]);
+      cell.classList.toggle('go', target !== null);
+      cell.title = target !== null ? 'Show $' + hex(target, 6) + ' in the memory view' : '';
+      if (prev && regValue(prev, d[1]) !== val) cell.classList.add('chg');
+      else if (!a.paused) cell.classList.remove('chg');
+    });
+    var bits = r.cpu === '68000' ? r.SR : r.P;
+    FLAGS[r.cpu].forEach(function (d) { v.regCells['f' + d[0]].classList.toggle('on', !!(bits & d[1])); });
+    if (r.cpu === '68000') v.regCells.ipl.textContent = 'interrupt mask ' + ((r.SR >> 8) & 7);
+    else {
+      v.regCells.fE.classList.toggle('on', r.E);
+      v.regCells.mode.textContent = r.E ? 'emulation mode' : 'A ' + (r.P & 0x20 ? '8' : '16') + '-bit · X/Y ' + (r.P & 0x10 ? '8' : '16') + '-bit';
+    }
+    v.prevRegs = r;
+  }
+
   function tick() {
     var v = state.view;
     if (!v || v.win.closed) { stop(); return; }
     if (syncPlatform()) return;     // renderWatches() already repainted
     var a = arena();
     if (a && a.phase !== 'playing' && a.phase !== 'preparing') { state.prevMem = null; state.prevVal = {}; }
-    paintToolbar(a); paintWatches(a); paintMemory(false);
+    paintToolbar(a); paintRegisters(a); paintWatches(a); paintMemory(false);
   }
   function stop() { try { if (state.view) state.view.win.clearInterval(state.timer); } catch (e) { /* window already gone */ } state.timer = null; state.view = null; }
 

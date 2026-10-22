@@ -5,7 +5,11 @@ import createGPGX from './core/gpgx.mjs';
 export const CORE_VERSION = 'gpgx-stable-retro-1.0.1-king94-v1';
 export const BUTTONS = ['B', 'A', 'MODE', 'START', 'UP', 'DOWN', 'LEFT', 'RIGHT', 'C', 'Y', 'X', 'Z'];
 const RAM_BASE = 0xFF0000;
-const WARM_FRAMES = 2;   // stable-retro steps the core twice while it sets up (test/core_equiv.mjs)
+const WARM_FRAMES = 2;
+// Address of m68k.dar[0] (struct m68ki_cpu_core in Genesis Plus GX core/m68k/m68k.h) inside this
+// build's WebAssembly memory. It was located and checked with test ROMs for core/gpgx.wasm only;
+// the main page offers registers only when the core fingerprint matches that build.
+const M68K_DAR = 12885272;   // stable-retro steps the core twice while it sets up (test/core_equiv.mjs)
 
 export async function sha256Hex(bytes) {
   const d = await crypto.subtle.digest('SHA-256', bytes);
@@ -79,6 +83,22 @@ export class Genesis {
     const ram = this.M.HEAPU8.subarray(this.ram, this.ram + this.ramSize);
     for (const b of ram) h = Math.imul(h ^ b, 16777619) >>> 0;
     return h;
+  }
+
+  /** 68000 registers as of the end of the last frame (between two instructions). */
+  registers() {
+    const dv = new DataView(this.M.HEAPU8.buffer), u = k => dv.getUint32(M68K_DAR + k, true);
+    const D = [], A = [];
+    for (let i = 0; i < 8; i++) { D.push(u(i * 4)); A.push(u(32 + i * 4)); }
+    // Field offsets from dar[0]: pc +64, sp[5] +68, ir +88, t1 +92, s +96, x +100, n +104,
+    // not_z +108, v +112, c +116, int_mask +120, stopped +128. SR is built as m68ki_get_sr() does.
+    const x = u(100), n = u(104), z = u(108) === 0, v = u(112), c = u(116), s = u(96) !== 0;
+    const ccr = ((x & 0x100) >> 4) | ((n & 0x80) >> 4) | (z ? 4 : 0) | ((v & 0x80) >> 6) | ((c & 0x100) >> 8);
+    const sr = (u(92) & 0x8000) | (s ? 0x2000 : 0) | (u(120) & 0x700) | ccr;
+    return {
+      cpu: '68000', D, A, PC: u(64), SR: sr, IR: u(88) & 0xFFFF, stopped: u(128) !== 0,
+      USP: s ? u(68) : A[7], SSP: s ? A[7] : u(84)
+    };
   }
 
   byte(addr) { return this.M.HEAPU8[this.ram + ((addr - RAM_BASE) ^ 1)]; }

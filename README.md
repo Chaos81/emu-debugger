@@ -28,6 +28,10 @@ Open <http://localhost:8000/>. Any static web host works (it also runs from a su
   pauses and runs exactly one frame; **Debugger** opens a separate debugger window:
   - Run control: Pause / Resume, Step frame, Step N frames, current frame number
     (keys in the debugger window: F8 pause / resume, F10 step, Shift+F10 step N)
+  - Registers: the CPU registers as of the end of the last frame (Genesis 68000: D0-D7, A0-A7, PC,
+    SR, USP, SSP, flags; SNES 65816: A, X, Y, S, D, DB, PB, PC, P, flags, register widths and
+    emulation mode). Changed registers are highlighted; clicking an address register that points
+    into work RAM shows it in the memory view
   - Watch list: work-RAM addresses as 8/16/32-bit signed or unsigned values; click a value to edit it
     (decimal or `$hex`); **Freeze** keeps it fixed every frame. Load / save the list as CSV
     (`Label,address[,type]` per line; an optional header row is skipped)

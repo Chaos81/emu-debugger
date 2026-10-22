@@ -107,3 +107,17 @@ FIX: Pause / Resume in the debugger sometimes needed several clicks
   the game's frame loop and the auto-pause-when-hidden rule paused the game, so Resume appeared to do
   nothing. The debugger window now drives the game loop from its own animation frames whenever the game
   page gets none, and the game no longer auto-pauses on a hidden tab while the debugger is open.
+
+DEBUGGER: REGISTERS
+  New Registers pane in the debugger window, as of the end of the last frame (between instructions):
+  - Genesis 68000: D0-D7, A0-A7, PC, SR, USP, SSP, the T S X N Z V C flags and the interrupt mask.
+  - SNES 65816: A, X, Y, S, D, DB, PB, PC, P, the N V M X D I Z C flags, E, and the A / X,Y widths.
+  Changed registers are highlighted like changed RAM. Clicking an address register that points into work
+  RAM (68000 A0-A7 / USP / SSP, 65816 S, D, X, Y in bank 0) moves the memory view there.
+  The cores do not export registers, so game/emu.js and game/snes.js read the CPU structs straight from
+  WebAssembly memory (m68k in Genesis Plus GX; Registers + ICPU in snes9x2010). Their positions were found
+  and checked with test ROMs for these exact core builds, so the pane only appears when the core
+  fingerprint matches (PLATFORMS[*].registerBuilds). SNES N/Z/C/V are taken from ICPU because the packed P
+  byte is not updated at the end of every frame.
+  Also fixed: in a narrow debugger window (under 820 px) the panes now stack and the window scrolls,
+  instead of squeezing the watch list out of view.

@@ -826,6 +826,8 @@ var PLATFORMS = Object.freeze({
       note: `Work RAM is $FF0000–$FFFFFF (64 KiB).`,
       // Builds before 2026-10 also hashed emu.js and boot.js; their saves and replays still load.
       legacyCoreHashes: [`6e7886e6d2968d4a4e5082b280b7fc60771261be5e06da19ae4f318f97d6aae1`],
+      // Core builds whose CPU register locations game/emu.js knows (see registers() there).
+      registerBuilds: [`cf692705a06f649f76853e934ece0f08668283ff983782ec7b11c91d0490771e`],
     },
     snes: {
       name: `Super Nintendo`,
@@ -836,6 +838,7 @@ var PLATFORMS = Object.freeze({
       ram: { base: 0x7e0000, size: 0x20000, big: !1 },
       note: `Work RAM is $7E0000–$7FFFFF (128 KiB).`,
       legacyCoreHashes: [`b7af4a486902487b541862c0d98be67ade00610ddb4a7c2321e4871e1067236b`],
+      registerBuilds: [`c51729bd11fe5f2f06f356d368a874ca69694b0859b9028ae50e61fe9febc9d1`],
     },
   }),
   REPLAY_FORMATS = [`EMU-REPLAY`, `NHL94-REPLAY`];
@@ -1472,6 +1475,15 @@ globalThis.__arena = Object.freeze({
   unfreezeRam,
   isFrozen(a) {
     return freezes.has(a);
+  },
+  // CPU registers as of the end of the last frame; null without a running game, and
+  // { unavailable: true } for an emulator build whose register locations are unknown.
+  registers() {
+    return !emu || phase !== `playing`
+      ? null
+      : platformInfo(config.platform).registerBuilds.includes(coreHash) && emu.registers
+        ? emu.registers()
+        : { unavailable: !0 };
   },
   afterLoad() {
     ((lastTs = null), (acc = 0), __restartRecording(), keys.held.clear());
