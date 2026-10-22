@@ -822,6 +822,7 @@ var PLATFORMS = Object.freeze({
       emu: `emu.js`,
       core: [`core/gpgx.wasm`, `core/gpgx.mjs`],
       mask: 507,
+      ram: { base: 0xff0000, size: 0x10000, big: !0 },
       note: `Work RAM is $FF0000–$FFFFFF (64 KiB).`,
       // Builds before 2026-10 also hashed emu.js and boot.js; their saves and replays still load.
       legacyCoreHashes: [`6e7886e6d2968d4a4e5082b280b7fc60771261be5e06da19ae4f318f97d6aae1`],
@@ -832,6 +833,7 @@ var PLATFORMS = Object.freeze({
       emu: `snes.js`,
       core: [`core/snes.wasm`, `core/snes.mjs`],
       mask: 3839,
+      ram: { base: 0x7e0000, size: 0x20000, big: !1 },
       note: `Work RAM is $7E0000–$7FFFFF (128 KiB).`,
       legacyCoreHashes: [`b7af4a486902487b541862c0d98be67ade00610ddb4a7c2321e4871e1067236b`],
     },
@@ -924,7 +926,9 @@ var BASE = `${globalThis.__BASE}`,
   recorder = null,
   startStateHash = null,
   controllerPause = null,
-  helpPause = null;
+  helpPause = null,
+  freezes = new Map(), // frozen work-RAM bytes: address -> value, rewritten after every frame
+  ramEdited = !1; // RAM was changed this game, so replay recording has stopped
 
 function setStatus(e) {
   k(`setup-status`).textContent = e;
@@ -972,6 +976,8 @@ function Z() {
         ? `STARTING GAME`
         : `NO GAME IN PROGRESS`),
     k(`screen-wrap`).classList.toggle(`gameplay-view`, playing),
+    (k(`pause-badge`).hidden = !(playing && paused)),
+    (k(`step-frame`).disabled = !playing),
     (k(`game-build-title`).textContent = rom
       ? `Your game is ready`
       : romError
@@ -1036,6 +1042,8 @@ function resetToLobby() {
     (phase = `lobby`),
     (paused = !1),
     (runId = null),
+    freezes.clear(),
+    (ramEdited = !1),
     keys.held.clear(),
     startSeq++,
     (starting = !1));
@@ -1158,6 +1166,76 @@ async function startGame() {
     seq === startSeq && ((starting = !1), Z());
   }
 }
+// Run one emulator frame: replay input when a replay is playing, otherwise the
+// keyboard / controllers. Frozen RAM bytes are written back after the frame.
+function runFrame(mask = platformInfo(config.platform).mask) {
+  if (__rp) {
+    if (__rp.i >= __rp.n) return (__rpDone(), !1);
+    (__rp.loads[__rp.i] && emu.load(__rp.loads[__rp.i]),
+      emu.step(__rp.p1[__rp.i], __rp.p2[__rp.i]),
+      applyFreezes(),
+      __rp.i++,
+      __rp.i % 120 === 0 && (__rp.hashes[__rp.i] = emu.checksum() >>> 0),
+      __rp.i % 30 === 0 && (k(`connection-status`).textContent = `Replay · frame ${__rp.i} of ${__rp.n}`));
+    return !0;
+  }
+  let p1 = keys.mask(0) & mask,
+    p2 = keys.mask(1) & mask;
+  return (emu.step(p1, p2), applyFreezes(), pushInput(recorder?.frames, p1, p2), !0);
+}
+function applyFreezes() {
+  for (let [a, v] of freezes) emu.writeByte(a, v);
+}
+function setPaused(on) {
+  phase !== `playing` ||
+    paused === !!on ||
+    ((paused = !!on),
+    keys.held.clear(),
+    paused ? audio.suspend() : (audio.unlock(), (lastTs = null), (acc = 0)),
+    Z());
+}
+// Pause (if needed) and run n frames, then show the last one.
+function stepFrames(n = 1) {
+  if (phase !== `playing` || !emu) return 0;
+  (setPaused(!0), (n = Math.max(1, Math.min(600, n | 0))));
+  let done = 0;
+  try {
+    for (; done < n && runFrame(); ) done++;
+    drawFrame();
+  } catch (e) {
+    fail(e);
+  }
+  return (Z(), done);
+}
+// Work-RAM writes from the debugger. Throws when the range is outside work RAM.
+function ramRange(addr, n) {
+  let r = platformInfo(config.platform).ram;
+  if (!emu) throw Error(`Start a game first.`);
+  if (!Number.isSafeInteger(addr) || n < 1 || addr < r.base || addr + n > r.base + r.size)
+    throw Error(`Outside work RAM ($${r.base.toString(16).toUpperCase()}-$${(r.base + r.size - 1).toString(16).toUpperCase()}).`);
+}
+function noteRamWrite() {
+  ramEdited ||
+    ((ramEdited = !0),
+    recorder &&
+      !__rp &&
+      (finishRecording(),
+      setStatus(`RAM was changed, so replay recording stopped. Save replay keeps everything before the change.`)));
+}
+function writeRam(addr, bytes) {
+  ramRange(addr, bytes.length);
+  noteRamWrite();
+  bytes.forEach((b, i) => {
+    let a = addr + i;
+    (emu.writeByte(a, b), freezes.has(a) && freezes.set(a, b & 255));
+  });
+}
+function freezeRam(addr, bytes) {
+  (ramRange(addr, bytes.length), noteRamWrite(), bytes.forEach((b, i) => freezes.set(addr + i, b & 255)), applyFreezes());
+}
+function unfreezeRam(addr, n = 1) {
+  for (let i = 0; i < n; i++) freezes.delete(addr + i);
+}
 function drawFrame() {
   let v = emu.video();
   if (!v) return;
@@ -1180,21 +1258,7 @@ function frameLoop(ts) {
           mask = platformInfo(config.platform).mask;
         acc = Math.min(acc + dt, step * 5);
         for (let n = 0; acc >= step && n++ < 5; ) {
-          let ran;
-          if (__rp) {
-            if (__rp.i >= __rp.n) (__rpDone(), (ran = !1));
-            else
-              (__rp.loads[__rp.i] && emu.load(__rp.loads[__rp.i]),
-                emu.step(__rp.p1[__rp.i], __rp.p2[__rp.i]),
-                __rp.i++,
-                __rp.i % 120 === 0 && (__rp.hashes[__rp.i] = emu.checksum() >>> 0),
-                __rp.i % 30 === 0 && (k(`connection-status`).textContent = `Replay · frame ${__rp.i} of ${__rp.n}`),
-                (ran = !0));
-          } else {
-            let p1 = keys.mask(0) & mask,
-              p2 = keys.mask(1) & mask;
-            (emu.step(p1, p2), pushInput(recorder?.frames, p1, p2), (ran = !0));
-          }
+          let ran = runFrame(mask);
           if (!ran) {
             acc = 0;
             break;
@@ -1244,15 +1308,10 @@ k(`platform-select`).addEventListener(
 );
 k(`start-match`).addEventListener(`click`, guard(startGame));
 k(`return-select`).addEventListener(`click`, guard(endGame));
+k(`step-frame`).addEventListener(`click`, () => stepFrames(1));
 k(`pause-match`).addEventListener(
   `click`,
-  guard(async () => {
-    phase === `playing` &&
-      ((paused = !paused),
-      keys.held.clear(),
-      paused ? (audio.suspend(), overlay(`Game paused.`)) : (await audio.unlock(), overlay(``, !1), (lastTs = null), (acc = 0)),
-      Z());
-  }),
+  guard(() => setPaused(!paused)),
 );
 // The controller and help dialogs pause the game while they are open.
 function onControllerOpen() {
@@ -1382,6 +1441,27 @@ globalThis.__arena = Object.freeze({
   snapshot() {
     return emu.save();
   },
+  // debugger
+  get paused() {
+    return paused;
+  },
+  get frame() {
+    return emu ? emu.frames : 0;
+  },
+  get ram() {
+    return { ...platformInfo(config.platform).ram };
+  },
+  get recording() {
+    return !!recorder;
+  },
+  setPaused,
+  step: stepFrames,
+  writeRam,
+  freezeRam,
+  unfreezeRam,
+  isFrozen(a) {
+    return freezes.has(a);
+  },
   afterLoad() {
     ((lastTs = null), (acc = 0), __restartRecording(), keys.held.clear());
     try {
@@ -1399,7 +1479,7 @@ var __rp = null,
 // A save state loaded mid-game starts a new replay segment that begins from that state.
 function __restartRecording() {
   let old = recorder;
-  if (__rp || !old) {
+  if (__rp || !old || ramEdited) {
     recorder = null;
     return;
   }

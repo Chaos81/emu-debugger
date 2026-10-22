@@ -24,7 +24,16 @@ Open <http://localhost:8000/>. Any static web host works (it also runs from a su
 - Save and load states (`.state`, named after the ROM). Saves and replays from earlier builds still load.
 - Emulator volume slider and mute
 - Setup panel collapses when a game starts (Show setup button brings it back)
-- EMULATOR CONTROL (under Play & Controls): **Reset emulator** restarts the game from power-on; **RAM viewer** opens a separate window where you type work-RAM addresses to watch live values plus a 128-byte dump. It is read-only. **Load CSV** imports a watch list, one `Label,RAM address` per line (an optional header row is skipped)
+- EMULATOR CONTROL (under Play & Controls): **Reset emulator** restarts the game from power-on; **Step frame**
+  pauses and runs exactly one frame; **Debugger** opens a separate debugger window:
+  - Run control: Pause / Resume, Step frame, Step N frames, current frame number
+    (keys in the debugger window: F8 pause / resume, F10 step, Shift+F10 step N)
+  - Watch list: work-RAM addresses as 8/16/32-bit signed or unsigned values; click a value to edit it
+    (decimal or `$hex`); **Freeze** keeps it fixed every frame. Load / save the list as CSV
+    (`Label,address[,type]` per line; an optional header row is skipped)
+  - Memory view: 256 bytes per page with ASCII; click a byte to edit it, right-click to freeze it;
+    changed bytes are yellow, frozen bytes blue
+  - Changing or freezing RAM stops replay recording for that game (Save replay keeps what came before)
 - Replays: **Save replay** records every button press by frame (both players) into a
   small `.replay` file; **Watch replay** plays it back exactly by booting the same ROM from power-on.
   Loading a save state mid-game is stored in the replay too. A replay only plays with the same ROM

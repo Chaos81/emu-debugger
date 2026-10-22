@@ -88,3 +88,16 @@ GAME-SPECIFIC CODE AND WORDING REMOVED
   emu.js / snes.js no longer invalidates save states and replays. Saves and replays from earlier
   builds are still accepted. New save states start with "EMUS" and new replays use format
   "EMU-REPLAY"; older "NHLS" states and "NHL94-REPLAY" replays still load.
+
+DEBUGGER
+  The RAM viewer is now the Debugger window (ramviewer.js -> debugger.js; saved watch lists carry over).
+  - Run control: Pause / Resume, Step frame, Step N frames (1-600) and the frame counter. In the debugger
+    window F8 pauses / resumes, F10 steps one frame, Shift+F10 steps N. A Step frame button is also under
+    Emulator control. Pausing no longer covers the picture; a small PAUSED badge shows instead.
+  - Watch list: click a value to edit it (decimal or $hex, range-checked for its type); Freeze keeps the
+    value fixed. CSV import accepts an optional third "type" column; Save CSV exports the list.
+  - Memory view: 256-byte pages with ASCII, paging and Go to address; click a byte to edit (Tab moves on),
+    right-click to freeze / unfreeze. Changed bytes are highlighted yellow, frozen bytes blue.
+  - Frozen bytes are rewritten after every emulated frame (live play, steps and replay playback) and are
+    cleared when the game ends. Any RAM change stops replay recording for that game, since replays store
+    only inputs; Save replay keeps the part recorded before the change.

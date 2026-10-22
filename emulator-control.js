@@ -1,8 +1,8 @@
-// EMULATOR CONTROL buttons: reset the emulator and open the RAM viewer window.
+// EMULATOR CONTROL buttons: reset the emulator and open the debugger window (Step frame is wired in the main script).
 (function () {
   'use strict';
   var reset = document.getElementById('emu-reset'), ram = document.getElementById('ram-open');
-  if (ram) ram.addEventListener('click', function () { if (globalThis.__ramViewer) globalThis.__ramViewer.open(); });
+  if (ram) ram.addEventListener('click', function () { if (globalThis.__debugger) globalThis.__debugger.open(); });
   if (!reset) return;
   var busy = false;
   function sync() {

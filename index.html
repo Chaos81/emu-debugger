@@ -16,6 +16,7 @@
 .volume-control output{min-width:3ch;font-size:.8rem;opacity:.8}
 .screen-wrap.is-fullscreen:not(.cursor-idle),.screen-wrap.is-fullscreen:not(.cursor-idle) canvas,.screen-wrap:fullscreen:not(.cursor-idle),.screen-wrap:fullscreen:not(.cursor-idle) canvas{cursor:auto !important}
 .screen-wrap.is-fullscreen.cursor-idle,.screen-wrap.is-fullscreen.cursor-idle canvas,.screen-wrap:fullscreen.cursor-idle,.screen-wrap:fullscreen.cursor-idle canvas{cursor:none !important}
+.pause-badge{position:absolute;top:12px;right:12px;z-index:4;padding:4px 10px;font:700 12px/1.4 Arial,sans-serif;letter-spacing:.08em;color:#101b31;background:#f6c94c;border-radius:4px;pointer-events:none}.pause-badge[hidden]{display:none}
 .setup-panel.setup-collapsed>:not(.panel-title){display:none}.setup-panel.setup-collapsed .panel-title{margin-bottom:12px}.setup-toggle{margin-left:auto}
 </style></head>
 <body>
@@ -37,7 +38,7 @@
           <button id="scanlines-in-game" class="scanlines-in-game" type="button" aria-pressed="false">Scanlines: off</button>
           <button id="help-in-game" class="in-game-help" type="button" aria-haspopup="dialog" aria-controls="help-dialog">Help</button>
           <button id="controller-in-game" class="in-game-controller" type="button">Controller</button>
-          <div id="fullscreen-hint" class="fullscreen-hint" hidden>Press Esc to exit full screen</div>
+          <div id="fullscreen-hint" class="fullscreen-hint" hidden>Press Esc to exit full screen</div><div id="pause-badge" class="pause-badge" hidden>PAUSED</div>
           <div id="game-overlay" class="game-overlay">
                         <img class="console-art console-genesis" src="./assets/console-genesis.jpg" alt="Sega Genesis" onerror="this.onerror=null;this.src='./assets/console-genesis.svg'" /><img class="console-art console-snes" src="./assets/console-snes.jpg" alt="Super Nintendo" onerror="this.onerror=null;this.src='./assets/console-snes.svg'" /><div class="screen-copy"><p id="game-message">Choose your system and ROM,<br />then start the game.</p><span id="screen-tag" class="screen-tag">GENESIS</span></div>
           </div>
@@ -54,7 +55,7 @@
             <div class="help-content">
               <p class="help-intro">Everything you need to get in the game. Open any topic below.</p>
               <p id="help-session-note" class="help-session-note" role="status">You can open Help before a game or during a session.</p>
-              <nav class="help-topics" aria-label="Help topics"><button type="button" data-help-topic="help-play">Start playing</button><button type="button" data-help-topic="help-teams">System &amp; ROM</button><button type="button" data-help-topic="help-controls">Controls</button><button type="button" data-help-topic="help-screen">Sound &amp; screen</button><button type="button" data-help-topic="help-save-states">Save states</button><button type="button" data-help-topic="help-trouble">Troubleshooting</button></nav>
+              <nav class="help-topics" aria-label="Help topics"><button type="button" data-help-topic="help-play">Start playing</button><button type="button" data-help-topic="help-teams">System &amp; ROM</button><button type="button" data-help-topic="help-controls">Controls</button><button type="button" data-help-topic="help-screen">Sound &amp; screen</button><button type="button" data-help-topic="help-save-states">Save states</button><button type="button" data-help-topic="help-debugger">Debugger</button><button type="button" data-help-topic="help-trouble">Troubleshooting</button></nav>
 
               
               <details id="help-play" class="help-topic" open><summary>Play in 2 easy steps</summary><div class="help-topic-body"><ol><li><strong>Choose your system and ROM.</strong> Pick Sega Genesis or Super Nintendo, then choose your ROM file from your computer. It is read in your browser and never uploaded.</li><li><strong>Start.</strong> The game boots from the very beginning, exactly like a console. Use the game’s own menus as you would on a console.</li></ol><p>Two players can play on this computer with the two keyboard layouts or two controllers.</p></div></details>
@@ -82,6 +83,8 @@
 
               
 
+                            <details id="help-debugger" class="help-topic"><summary>Debugger: pause, step, edit and freeze RAM</summary><div class="help-topic-body"><p><strong>Step frame</strong> (under Emulator control) pauses the game and runs exactly one frame. <strong>Debugger</strong> opens a separate window with:</p><ul><li><strong>Run control:</strong> Pause / Resume, Step frame and Step N frames. Keys in the debugger window: <kbd>F8</kbd> pause / resume, <kbd>F10</kbd> step one frame, <kbd>Shift</kbd>+<kbd>F10</kbd> step N. Steps use the controllers’ current buttons.</li><li><strong>Watch:</strong> add work-RAM addresses with a type (8, 16 or 32-bit, signed or not). Click a value to change it; type decimal (<kbd>-3</kbd>) or hex (<kbd>$1F</kbd>). Tick <strong>Freeze</strong> to keep it fixed. Load or save the list as CSV (<code>Label, address, type</code>).</li><li><strong>Memory:</strong> 256 bytes at a time. Click a byte to edit it (<kbd>Tab</kbd> moves to the next byte); right-click to freeze or unfreeze it.</li></ul><p>Frozen values are written back after every frame. Freezes are cleared when the game ends. Changing or freezing RAM stops replay recording for that game, because a replay of inputs alone could not reproduce the edit; Save replay keeps everything recorded before it.</p><p>Keep the game window visible next to the debugger: browsers stop running a page that is hidden.</p></div></details>
+
                             <details id="help-trouble" class="help-topic"><summary>Troubleshooting</summary><div class="help-topic-body"><ul><li><strong>Game won’t load?</strong> Make sure your ROM file is loaded and the right system is selected. A desktop browser is recommended; if Safari or Edge fails, try an up-to-date Chrome.</li><li><strong>Black flashes or flicker?</strong> Note the game, browser, device and what was on screen.</li></ul></div></details>
 
                             <p class="help-small">Download any save states you want to keep before closing or refreshing the page.</p>
@@ -92,7 +95,7 @@
           <p id="connection-status" role="status">No game running</p>
           <div class="arena-actions">
             <div class="arena-action-group" role="group" aria-labelledby="play-actions-label"><span id="play-actions-label" class="arena-action-label">PLAY &amp; CONTROLS</span><button id="help-toolbar" class="text-button" type="button" aria-haspopup="dialog" aria-controls="help-dialog">Help</button><button id="fullscreen-toggle" class="text-button" type="button" aria-pressed="false">Full screen</button><button id="controller-setup" class="text-button" type="button">Controller</button><button id="scanlines-toggle" class="button small" type="button" aria-pressed="false">Scanlines: off</button><button id="pause-match" class="text-button" type="button" disabled>Pause</button><button id="replay-save" class="text-button" type="button" disabled title="Download a replay of this game">Save replay</button><button id="replay-watch" class="text-button" type="button" disabled title="Play back a saved replay">Watch replay</button><input id="replay-file" type="file" accept=".replay,application/json" hidden><span class="volume-control"><button id="volume-mute" class="text-button" type="button" aria-pressed="false" aria-label="Mute emulator sound">Volume</button><input id="volume-slider" type="range" min="0" max="100" step="1" value="100" aria-label="Emulator volume"><output id="volume-value" for="volume-slider">100%</output></span></div>
-            <div class="arena-action-group" role="group" aria-labelledby="emu-actions-label"><span id="emu-actions-label" class="arena-action-label">EMULATOR CONTROL</span><button id="emu-reset" class="text-button" type="button" disabled title="Restart the game from power-on">Reset emulator</button><button id="ram-open" class="text-button" type="button" title="Open the RAM viewer in a separate window">RAM viewer</button></div>
+            <div class="arena-action-group" role="group" aria-labelledby="emu-actions-label"><span id="emu-actions-label" class="arena-action-label">EMULATOR CONTROL</span><button id="emu-reset" class="text-button" type="button" disabled title="Restart the game from power-on">Reset emulator</button><button id="step-frame" class="text-button" type="button" disabled title="Pause and run exactly one frame">Step frame</button><button id="ram-open" class="text-button" type="button" title="Open the debugger in a separate window">Debugger</button></div>
             <div class="arena-action-group" role="group" aria-labelledby="save-actions-label"><span id="save-actions-label" class="arena-action-label">SAVE STATES</span><button id="load-state" class="text-button" type="button" hidden disabled>Load state</button></div>
             <div class="arena-action-group" role="group" aria-labelledby="session-actions-label"><span id="session-actions-label" class="arena-action-label">GAME</span><button id="return-select" class="text-button end-game-button" type="button" title="Stop the current game and return to setup" disabled>End game</button></div>
           </div>
@@ -124,7 +127,7 @@
   </dialog>
   <script src="./browser-check.js"></script>
   <script type="module" src="./savestate.js"></script>
-  <script src="./ramviewer.js"></script>
+  <script src="./debugger.js"></script>
   <script src="./emulator-control.js"></script>
   <script src="./setup-collapse.js"></script>
 <script>
