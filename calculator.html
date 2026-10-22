@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hex Calculator</title>
+<style>
+:root{--ink:#101b31;--muted:#657080;--line:#e2e8f0;--bg:#f6f7f9;--panel:#fff;--accent:#2563eb;--key:#fff;--key-hover:#eef2f7;--op:#e8eefc;--op-ink:#1d4ed8;--on:#101b31;--bad:#b91c1c}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font:13px/1.4 Arial,Helvetica,sans-serif;color:var(--ink);background:var(--bg);min-width:320px}
+button{font:inherit;color:inherit;cursor:pointer}
+.wrap{max-width:520px;margin:0 auto;padding:12px 16px 16px;display:flex;flex-direction:column;gap:10px}
+.mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+.screen{background:var(--ink);color:#fff;border-radius:8px;padding:10px 12px 8px}
+#expr{color:#94a3b8;font-size:12px;min-height:1.4em;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#main{font-size:30px;line-height:1.2;text-align:right;letter-spacing:.04em;white-space:nowrap;overflow:hidden;cursor:copy;border-radius:4px;transition:background .15s}
+#main.bad{background:#7f1d1d}
+.under{display:flex;align-items:center;gap:6px;margin-top:4px;min-height:20px}
+#err{flex:1;color:#fca5a5;font-size:12px}
+.fl{font-size:11px;min-width:18px;text-align:center;border:1px solid #3a4a6b;border-radius:3px;padding:0 3px;color:#64748b}
+.fl.on{background:#f6c94c;border-color:#f6c94c;color:var(--ink)}
+.fl.stale{opacity:.45}
+.rows{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:4px 10px}
+.copyrow{display:flex;align-items:baseline;gap:10px;padding:4px 0;border-bottom:1px solid var(--line);cursor:copy}
+.copyrow:last-child{border-bottom:0}
+.copyrow:hover .val{background:#f1f5f9}
+.copyrow b{width:52px;flex:none;font-size:10.5px;letter-spacing:.06em;color:var(--muted)}
+.copyrow .val{flex:1;text-align:right;border-radius:3px;padding:0 3px;word-break:break-all}
+.bitsbox{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.bitrow{display:flex;justify-content:flex-end;gap:2px}
+.bitrow+.bitrow{margin-top:6px}
+.bit{display:flex;flex-direction:column;align-items:center;width:24px;padding:3px 0 1px;border:1px solid var(--line);border-radius:3px;background:#fff}
+.bit:hover{border-color:#94a3b8}
+.bit.nib{margin-right:6px}
+.bit .v{font:13px ui-monospace,Menlo,Consolas,monospace}
+.bit .n{font-size:9px;color:var(--muted);height:11px}
+.bit.on{background:var(--on);border-color:var(--on);color:#fff}
+.bit.on .n{color:#cbd5e1}
+.opts{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.seg{display:inline-flex;border:1px solid #cbd5e1;border-radius:6px;overflow:hidden}
+.seg button{border:0;background:#fff;padding:5px 10px}
+.seg button+button{border-left:1px solid #cbd5e1}
+.seg button[aria-pressed=true]{background:var(--ink);color:#fff}
+.opts label{display:inline-flex;align-items:center;gap:5px;color:#334155;margin-left:auto}
+.keys{display:grid;grid-template-columns:repeat(6,1fr);gap:5px}
+.keys button{border:1px solid #cbd5e1;border-radius:6px;background:var(--key);padding:9px 0;font-size:14px;transition:background .1s}
+.keys button:hover:not(:disabled){background:var(--key-hover)}
+.keys button:disabled{opacity:.35;cursor:default}
+.keys button.op{background:var(--op);color:var(--op-ink);border-color:#c7d6f8;font-size:12px;font-weight:700}
+.keys button.op.pending{background:var(--accent);color:#fff;border-color:var(--accent)}
+.keys button.big{font-size:17px}
+.keys button.eq{grid-column:span 6;background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
+.keys button.zero{grid-column:span 2}
+.keys button.clr{color:var(--bad)}
+.keys button.bad{background:#fee2e2}
+.hint{color:var(--muted);font-size:11.5px;margin:0}
+kbd{font:11px ui-monospace,Menlo,Consolas,monospace;border:1px solid #cbd5e1;border-bottom-width:2px;border-radius:3px;padding:0 3px;background:#fff}
+#histwrap h2{margin:0 0 4px;font-size:10.5px;letter-spacing:.08em;color:var(--muted)}
+#hist{list-style:none;margin:0;padding:0;max-height:140px;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:8px}
+#hist button{display:block;width:100%;text-align:right;border:0;border-bottom:1px solid var(--line);background:none;padding:4px 10px;font:12px ui-monospace,Menlo,Consolas,monospace;color:#334155}
+#hist li:last-child button{border-bottom:0}
+#hist button:hover{background:#f1f5f9}
+</style>
+</head>
+<body>
+<main class="wrap" id="calc">
+  <section class="screen" aria-label="Display">
+    <div id="expr" class="mono"></div>
+    <div id="main" class="mono" title="Click to copy" role="status" aria-live="polite">0</div>
+    <div class="under"><span id="err" role="alert"></span>
+      <span class="fl mono" id="fN" title="Negative: top bit of the result">N</span>
+      <span class="fl mono" id="fZ" title="Zero: the result is 0">Z</span>
+      <span class="fl mono" id="fV" title="Overflow: the signed result did not fit">V</span>
+      <span class="fl mono" id="fC" title="Carry: unsigned carry or borrow, or the last bit shifted out">C</span>
+    </div>
+  </section>
+
+  <section class="rows" aria-label="Value in every base (click a row to copy)">
+    <div class="copyrow" title="Click to copy"><b>HEX</b><span id="hexv" class="val mono"></span></div>
+    <div class="copyrow" title="Click to copy"><b>DEC</b><span id="decv" class="val mono"></span></div>
+    <div class="copyrow" title="Click to copy"><b>SIGNED</b><span id="sdecv" class="val mono"></span></div>
+    <div class="copyrow" title="Click to copy"><b>BIN</b><span id="binv" class="val mono"></span></div>
+  </section>
+
+  <section class="bitsbox" aria-label="Bits (click a bit to flip it)"><div id="bits"></div></section>
+
+  <div class="opts">
+    <div class="seg" role="group" aria-label="Size"><button type="button" data-size="8">Byte</button><button type="button" data-size="16">Word</button><button type="button" data-size="32">Dword</button></div>
+    <div class="seg" role="group" aria-label="Input base"><button type="button" data-base="16">HEX</button><button type="button" data-base="10">DEC</button></div>
+    <label title="When ticked, ÷ and MOD treat values as signed (like DIVS); otherwise unsigned (like DIVU)"><input type="checkbox" id="signed"> Signed ÷ / MOD</label>
+  </div>
+
+  <section class="keys" aria-label="Keypad">
+    <button type="button" class="op" data-op="and" title="AND (&amp;)">AND</button>
+    <button type="button" class="op" data-op="or" title="OR (|)">OR</button>
+    <button type="button" class="op" data-op="xor" title="XOR (^)">XOR</button>
+    <button type="button" class="op" data-k="not" title="NOT: flip every bit (~)">NOT</button>
+    <button type="button" class="op" data-k="neg" title="NEG: two's complement, 0 − value (N)">NEG</button>
+    <button type="button" class="op" data-op="mod" title="Remainder (%)">MOD</button>
+
+    <button type="button" class="op" data-op="lsl" title="Logical shift left by the next value (&lt;)">LSL</button>
+    <button type="button" class="op" data-op="lsr" title="Logical shift right, zeros shifted in (&gt;)">LSR</button>
+    <button type="button" class="op" data-op="asl" title="Arithmetic shift left (V set if the sign bit changes)">ASL</button>
+    <button type="button" class="op" data-op="asr" title="Arithmetic shift right, sign bit copied in">ASR</button>
+    <button type="button" class="op" data-op="rol" title="Rotate left">ROL</button>
+    <button type="button" class="op" data-op="ror" title="Rotate right">ROR</button>
+
+    <button type="button" data-d="A">A</button><button type="button" data-d="B">B</button>
+    <button type="button" data-d="7">7</button><button type="button" data-d="8">8</button><button type="button" data-d="9">9</button>
+    <button type="button" class="op big" data-op="div" title="Divide (/)">÷</button>
+
+    <button type="button" data-d="C">C</button><button type="button" data-d="D">D</button>
+    <button type="button" data-d="4">4</button><button type="button" data-d="5">5</button><button type="button" data-d="6">6</button>
+    <button type="button" class="op big" data-op="mul" title="Multiply (*)">×</button>
+
+    <button type="button" data-d="E">E</button><button type="button" data-d="F">F</button>
+    <button type="button" data-d="1">1</button><button type="button" data-d="2">2</button><button type="button" data-d="3">3</button>
+    <button type="button" class="op big" data-op="sub" title="Subtract (-)">−</button>
+
+    <button type="button" class="clr" data-k="clear" title="Clear everything (Esc)">CLR</button>
+    <button type="button" class="clr" data-k="ce" title="Clear the current number (Delete)">CE</button>
+    <button type="button" data-k="back" title="Delete the last digit (Backspace)">⌫</button>
+    <button type="button" class="zero" data-d="0">0</button>
+    <button type="button" class="op big" data-op="add" title="Add (+)">+</button>
+
+    <button type="button" class="eq big" data-k="eq" title="Equals (Enter)">=</button>
+  </section>
+
+  <p class="hint">Keys: <kbd>0</kbd>–<kbd>9</kbd> <kbd>A</kbd>–<kbd>F</kbd>, <kbd>+</kbd> <kbd>-</kbd> <kbd>*</kbd> <kbd>/</kbd> <kbd>%</kbd>, <kbd>&amp;</kbd> <kbd>|</kbd> <kbd>^</kbd> <kbd>~</kbd>, <kbd>&lt;</kbd> <kbd>&gt;</kbd> shift, <kbd>N</kbd> negate, <kbd>Enter</kbd>, <kbd>Esc</kbd> clear. Shifts and rotates use the next value as the count. Paste <code>$1F</code>, <code>0x1F</code>, <code>%1010</code> or <code>-12</code>. Click any value to copy it.</p>
+
+  <section id="histwrap" hidden><h2>HISTORY (click to reuse a result)</h2><ul id="hist"></ul></section>
+</main>
+<script src="./calculator.js"></script>
+</body>
+</html>

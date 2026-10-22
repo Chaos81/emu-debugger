@@ -121,3 +121,20 @@ DEBUGGER: REGISTERS
   byte is not updated at the end of every frame.
   Also fixed: in a narrow debugger window (under 820 px) the panes now stack and the window scrolls,
   instead of squeezing the watch list out of view.
+
+DEBUGGER: HEX CALCULATOR
+  A Calculator button in the debugger toolbar opens calculator.html in its own window (clicking again
+  brings it to the front without resetting it). It also works on its own.
+  - Sizes: Byte (8-bit), Word (16-bit), Dword (32-bit). Switching size keeps the low bits.
+  - Input in HEX or DEC; the value is always shown in hex, unsigned decimal, signed decimal and binary,
+    plus a bit grid (click a bit to flip it). Click any value to copy it; paste $1F, 0x1F, 1Fh,
+    %1010, 0b1010 or -12.
+  - + − × ÷ MOD (÷ / MOD unsigned, or signed with "Signed ÷ / MOD", which truncates like DIVS);
+    AND OR XOR NOT NEG; LSL LSR ASL ASR ROL ROR, where the next value is the count.
+  - N Z V C flags after each operation, set as the 68000 would (C = carry / borrow or last bit out;
+    V = signed overflow, or for ASL the sign bit changing during the shift).
+  - Operators chain left to right; "=" again repeats the last step; history of the last 12 steps.
+  - Keyboard: 0-9 A-F, + - * / %, & | ^ ~, < > (LSL / LSR), N (NEG), Enter, Backspace, Delete (CE),
+    Esc (clear). Size, base and the signed setting are remembered.
+  The maths is in calculator.js without any page code; every byte-size operation was checked against
+  an independent bit-by-bit reference for all input pairs.

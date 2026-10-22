@@ -145,7 +145,7 @@
     'button{cursor:pointer}button:hover:not(:disabled){background:#eef2f7}button:disabled{opacity:.45;cursor:default}' +
     '.bar{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;padding:.55rem .8rem;background:var(--ink);color:#fff}' +
     '.bar button{background:#1e2a44;border-color:#3a4a6b;color:#fff}.bar button:hover:not(:disabled){background:#2b3b5e}.bar button.primary{background:var(--accent);border-color:var(--accent)}' +
-    '.bar input{width:4.2em;background:#1e2a44;border-color:#3a4a6b;color:#fff}' +
+    '.bar input{width:4.2em;background:#1e2a44;border-color:#3a4a6b;color:#fff}.bar .tool{margin-left:.6rem}' +
     '.state{margin-left:auto;display:flex;align-items:center;gap:.45rem;font-variant-numeric:tabular-nums}' +
     '.dot{width:9px;height:9px;border-radius:50%;background:#64748b}.dot.run{background:#22c55e}.dot.pause{background:#f6c94c}' +
     '.sys{font-size:11px;letter-spacing:.08em;border:1px solid #3a4a6b;border-radius:4px;padding:1px 6px;color:#cbd5e1}' +
@@ -192,6 +192,7 @@
       '<button id="pause" class="primary" title="Pause or resume the game (F8)">Pause</button>' +
       '<button id="step1" title="Pause and run one frame (F10)">Step frame</button>' +
       '<button id="stepn" title="Pause and run this many frames (Shift+F10)">Step 10</button><input id="nframes" type="number" min="1" max="600" value="10" aria-label="Frames per step">' +
+      '<button id="calc" class="tool" title="Open the hex calculator in its own window">Calculator</button>' +
       '<div class="state"><span id="dot" class="dot"></span><b id="runstate">No game</b><span>frame <b id="frame">—</b></span><span id="sys" class="sys"></span></div>' +
       '</header>' +
       '<p id="msg" class="msg" role="status" aria-live="polite"></p>' +
@@ -223,6 +224,7 @@
     v.wtype.value = 'u16';
 
     v.pause.addEventListener('click', togglePause);
+    $('calc').addEventListener('click', openCalculator);
     v.step1.addEventListener('click', function () { step(1); });
     v.stepn.addEventListener('click', function () { step(stepCount()); });
     v.stepN.addEventListener('input', function () { v.stepn.textContent = 'Step ' + stepCount(); });
@@ -557,6 +559,16 @@
     };
     w.requestAnimationFrame(pumpFrame);
   }
+  // The hex calculator (calculator.html) in its own window. It is opened from the debugger window,
+  // which has the click; reopening only focuses it, so its state is kept.
+  function openCalculator() {
+    var w = state.view && state.view.win; if (!w) return;
+    var url = new URL('calculator.html', location.href).href;
+    var c = w.open('', 'emu-calculator', 'width=480,height=860,resizable=yes,scrollbars=yes');
+    if (!c) { say('The pop-up was blocked. Allow pop-ups for this site, then click Calculator again.', true); return; }
+    try { if (c.location.href === 'about:blank') c.location.href = url; } catch (e) { c.location.href = url; }
+    c.focus();
+  }
   function isOpen() { return !!(state.view && state.win && !state.win.closed); }
 
   // Split one CSV line into fields (handles "quoted, fields").
@@ -591,6 +603,6 @@
     return { added: added, skipped: skipped };
   }
 
-  globalThis.__debugger = { open: open, isOpen: isOpen, importCsv: function (t, ty) { syncPlatform(); return importCsv(t, ty || 'u16'); } };
+  globalThis.__debugger = { open: open, isOpen: isOpen, openCalculator: openCalculator, importCsv: function (t, ty) { syncPlatform(); return importCsv(t, ty || 'u16'); } };
   globalThis.__ramViewer = globalThis.__debugger;   // older name
 })();

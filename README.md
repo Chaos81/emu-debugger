@@ -37,6 +37,10 @@ Open <http://localhost:8000/>. Any static web host works (it also runs from a su
     (`Label,address[,type]` per line; an optional header row is skipped)
   - Memory view: 256 bytes per page with ASCII; click a byte to edit it, right-click to freeze it;
     changed bytes are yellow, frozen bytes blue
+  - Calculator (toolbar button): a hex calculator in its own window (`calculator.html`). Byte /
+    word / dword sizes; hex or decimal input; hex, decimal, signed decimal and binary shown at once,
+    with a clickable bit grid; + − × ÷ MOD, AND OR XOR NOT NEG, LSL LSR ASL ASR ROL ROR, and
+    68000-style N Z V C flags; history; click any value to copy it
   - Changing or freezing RAM stops replay recording for that game (Save replay keeps what came before)
 - Replays: **Save replay** records every button press by frame (both players) into a
   small `.replay` file; **Watch replay** plays it back exactly by booting the same ROM from power-on.
