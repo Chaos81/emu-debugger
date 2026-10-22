@@ -13,6 +13,6 @@
   window.addEventListener('error', function (event) {
     if (document.documentElement.getAttribute('data-arena-ready') === 'true') return;
     // No stack traces, private URLs or game data in the public message.
-    if (event.message || (event.target && event.target.tagName === 'SCRIPT')) notice('The arena could not start in this browser. Reload once, then try an updated desktop browser. When reporting this, include your browser version and device.');
+    if (event.message || (event.target && event.target.tagName === 'SCRIPT')) notice('The emulator could not start in this browser. Reload once, then try an updated desktop browser. When reporting this, include your browser version and device.');
   }, true);
 }());

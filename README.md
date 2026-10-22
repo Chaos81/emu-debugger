@@ -2,7 +2,7 @@
 
 A browser-based Sega Genesis and Super Nintendo emulator, being turned into a debugger. Pick a system,
 load **your own ROM** from your computer and start the game. The emulator boots the ROM from power-on,
-so teams, players and rules are all chosen in the game's own menus. Custom ROMs and ROM hacks work.
+like a console. Any ROM, hack or homebrew works.
 Two players can play on one computer (two keyboard layouts or two controllers).
 
 For non-commercial use. **No ROMs are included or hosted; supply your own.**
@@ -21,7 +21,7 @@ Open <http://localhost:8000/>. Any static web host works (it also runs from a su
 
 - Genesis (Genesis Plus GX) and SNES (Snes9x2010) cores compiled to WebAssembly
 - ROM CRC32 shown once the ROM loads
-- Save and load states (`.state`, named after the ROM)
+- Save and load states (`.state`, named after the ROM). Saves and replays from earlier builds still load.
 - Emulator volume slider and mute
 - Setup panel collapses when a game starts (Show setup button brings it back)
 - EMULATOR CONTROL (under Play & Controls): **Reset emulator** restarts the game from power-on; **RAM viewer** opens a separate window where you type work-RAM addresses to watch live values plus a 128-byte dump. It is read-only. **Load CSV** imports a watch list, one `Label,RAM address` per line (an optional header row is skipped)

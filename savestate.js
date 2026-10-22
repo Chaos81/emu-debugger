@@ -1,22 +1,23 @@
-// Save states for the arena (Genesis, SNES and the other cores share the same code).
+// Save states (Genesis and SNES share the same code).
 //
-// Adds "Save state" and "Load state" buttons to the SAVES & LEAGUE STATS group, plus
+// Adds "Save state" and "Load state" buttons to the SAVE STATES group, plus
 // matching buttons in full screen.  Keyboard: [ = save state,  ] = load state.
-//   Save state  -> downloads a .state file at any point in a match
+//   Save state  -> downloads a .state file at any point in a game
 //   Load state  -> pick a .state file to restore it
 //
 // Either button works any time a game is running. Every state is checked against
 // the running game's system, emulator build and size before it is used.
 //
 // File layout (.state):
-//   bytes 0-3   magic "NHLS"
+//   bytes 0-3   magic "EMUS" (files from older builds start with "NHLS"; both load)
 //   bytes 4-7   header length N (uint32, big endian)
-//   next N      JSON header (ROM hash, core version, platform, teams, frame ...)
+//   next N      JSON header (ROM hash, core version, platform, frame ...)
 //   remainder   raw emulator state exactly as the core produced it
 (function () {
   'use strict';
 
-  var MAGIC = [0x4e, 0x48, 0x4c, 0x53]; // "NHLS"
+  var MAGIC = [0x45, 0x4d, 0x55, 0x53];       // "EMUS"
+  var OLD_MAGIC = [0x4e, 0x48, 0x4c, 0x53];   // "NHLS", written by older builds
   var FORMAT = 1;
   var api = null;
   var saveBtn, loadBtn, saveFs, loadFs, fileInput, msg, toast, msgTimer, toastTimer;
@@ -41,11 +42,11 @@
   }
 
   // ---------- availability ----------
-  function inMatch() {
-    return !!(api && api.emu && (api.phase === 'lineup' || api.phase === 'playing'));
+  function inGame() {
+    return !!(api && api.emu && api.phase === 'playing');
   }
-  function canSave() { return inMatch(); }
-  function canLoad() { return inMatch(); }
+  function canSave() { return inGame(); }
+  function canLoad() { return inGame(); }
 
   function refresh() {
     api = hook();
@@ -62,7 +63,7 @@
   }
 
   // ---------- helpers ----------
-  function baseName() {                      // the ROM's file name without its extension, e.g. nhl94.bin -> nhl94
+  function baseName() {                      // the ROM's file name without its extension, e.g. game.bin -> game
     var n = String((api && api.romName) || '').replace(/\.(bin|md|gen|smd|sfc|smc|rom|zip)$/i, '').replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').trim();
     return n || ('game-' + (api ? api.platform : 'state'));
   }
@@ -111,7 +112,8 @@
   // ---------- load: parsing and validation ----------
   function parse(buffer) {
     var u8 = new Uint8Array(buffer);
-    if (u8.length < 8 || MAGIC.some(function (b, i) { return u8[i] !== b; })) {
+    var is = function (m) { return m.every(function (b, i) { return u8[i] === b; }); };
+    if (u8.length < 8 || !(is(MAGIC) || is(OLD_MAGIC))) {
       throw new Error('This is not a save state made by this site.');
     }
     var n = new DataView(buffer).getUint32(4, false);
@@ -125,7 +127,7 @@
     var h = s.header;
     if (h.platform !== api.platform) throw new Error('This state is for ' + h.platform + '; the arena is set to ' + api.platform + '.');
     if (h.coreVersion && api.coreVersion && h.coreVersion !== api.coreVersion) throw new Error('This state was made with a different emulator version.');
-    if (h.coreHash && api.coreHash && h.coreHash !== api.coreHash) throw new Error('This state was made with a different emulator build.');
+    if (h.coreHash && api.coreHash && (api.coreHashes || [api.coreHash]).indexOf(h.coreHash) < 0) throw new Error('This state was made with a different emulator build.');
     if (!Number.isSafeInteger(h.frame) || h.frame < 0) throw new Error('The save state header is damaged.');
     if (s.bytes.length !== h.stateSize) throw new Error('The save state is incomplete.');
     if (!api.emu.stateSize || s.bytes.length !== api.emu.stateSize) throw new Error('This state does not fit the running game.');

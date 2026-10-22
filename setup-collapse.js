@@ -1,4 +1,4 @@
-// Collapses the pre-game setup panel when a match starts, and restores it back at the lobby.
+// Collapses the setup panel when a game starts, and restores it back at the lobby.
 // The player can still show or hide it with the button in the panel header.
 (function () {
   'use strict';

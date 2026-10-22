@@ -1,7 +1,6 @@
-// NHL '94 in the browser: Genesis Plus GX (WebAssembly, the same core and settings as
-// stable-retro 1.0.1, see core/frontend.c), the player's own ROM, and RAM reads for the bot.
+// Genesis adapter: Genesis Plus GX (WebAssembly, the same core and settings as
+// stable-retro 1.0.1, see core/frontend.c) running the player's own ROM.
 import createGPGX from './core/gpgx.mjs';
-import RAMVARS from './ramvars.js';
 
 export const CORE_VERSION = 'gpgx-stable-retro-1.0.1-king94-v1';
 export const BUTTONS = ['B', 'A', 'MODE', 'START', 'UP', 'DOWN', 'LEFT', 'RIGHT', 'C', 'Y', 'X', 'Z'];
@@ -56,7 +55,7 @@ export class Genesis {
   save() {
     const M = this.M, size = M._fe_state_size();
     if (this.closed) throw new Error('Emulator is closed.');
-    if (!size) throw new Error('This core does not support rollback.');
+    if (!size) throw new Error('This core does not support save states.');
     if (!this.statePtr) { this.statePtr = M._malloc(size); this.stateSize = size; }
     if (!M._fe_save(this.statePtr, size)) throw new Error('Could not save emulator state.');
     return { bytes: M.HEAPU8.slice(this.statePtr, this.statePtr + size), frame: this.frames };
@@ -68,7 +67,7 @@ export class Genesis {
     if (!this.statePtr) this.save();
     if (state.bytes.length !== this.stateSize) throw new Error('Invalid emulator state size.');
     // GPGX unserialize clears its live framebuffer. Preserve the last rendered
-    // picture through rollback and temporary confirmed-score reads, until step().
+    // picture until the next step().
     this.video();
     this.M.HEAPU8.set(state.bytes, this.statePtr);
     if (!this.M._fe_load(this.statePtr, this.stateSize)) throw new Error('Could not restore emulator state.');
@@ -97,12 +96,6 @@ export class Genesis {
     }
   }
 
-  /** The same dict stable-retro's env.step() returns as `info`. */
-  info() {
-    const out = {};
-    for (const k in RAMVARS) out[k] = this.read(RAMVARS[k][0], RAMVARS[k][1]);
-    return out;
-  }
 
   /** Copy the last frame into ImageData-ready RGBA; returns {data, width, height}. */
   video() {

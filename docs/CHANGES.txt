@@ -76,3 +76,15 @@ NHL94ONLINE BRANDING REMOVED
   (neither had a button on the page). Browser storage keys are now emu-debugger-volume and
   emu-debugger-ramwatch-<system>; the old nhl94online-* values are still read, so saved volume and
   RAM watch lists carry over.
+
+GAME-SPECIFIC CODE AND WORDING REMOVED
+  The site is now a plain Genesis / SNES emulator. Removed the hockey wording from the page and help,
+  the EARLY PROTOTYPE badge, and the game-specific code behind it: team lists and pairings, match
+  rules (mercy, tournament), the result-share card, in-game score reading, the stats capture and
+  saved-game resume panel, the "choose your lines" phase, the NHL '95 and Sega CD entries (and the
+  Sega CD disc cache), and game/boot.js, game/snes-boot.js and game/ramvars.js. SNES controller
+  mapping labels are plain "SNES Y" / "SNES X".
+  The emulator build fingerprint now covers only the core (wasm + mjs) and its version, so editing
+  emu.js / snes.js no longer invalidates save states and replays. Saves and replays from earlier
+  builds are still accepted. New save states start with "EMUS" and new replays use format
+  "EMU-REPLAY"; older "NHLS" states and "NHL94-REPLAY" replays still load.

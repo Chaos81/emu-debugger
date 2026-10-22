@@ -7,7 +7,7 @@
   var busy = false;
   function sync() {
     var a = globalThis.__arena, phase = a && a.phase;
-    reset.disabled = busy || !(phase === 'playing' || phase === 'lineup');
+    reset.disabled = busy || phase !== 'playing';
   }
   function until(test, ms) {
     return new Promise(function (ok, no) {
@@ -18,14 +18,13 @@
     });
   }
   // The core has no reset call, so a reset is a power cycle: end this game, return to setup
-  // (your teams and options stay selected) and start it again from power-on.
+  // (the system and ROM stay selected) and start it again from power-on.
   reset.addEventListener('click', function () {
     var a = globalThis.__arena, end = document.getElementById('return-select'), start = document.getElementById('start-match');
     if (busy || !a || !end || !start) return;
     busy = true; sync();
     Promise.resolve()
-      .then(function () { end.click(); return until(function () { return a.phase === 'finished' || a.phase === 'lobby'; }, 8000); })
-      .then(function () { if (a.phase === 'finished') { end.click(); return until(function () { return a.phase === 'lobby'; }, 8000); } })
+      .then(function () { end.click(); return until(function () { return a.phase === 'lobby'; }, 8000); })
       .then(function () { return until(function () { return !start.disabled; }, 8000); })
       .then(function () { start.click(); })
       .catch(function () {})

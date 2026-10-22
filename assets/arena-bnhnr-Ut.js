@@ -18,10 +18,10 @@ function __crc32(b) {
   return ((c ^ 4294967295) >>> 0).toString(16).padStart(8, `0`);
 }
 function __myRom() {
-  if (!P) return null;
-  if (__crcFor !== P) {
-    let n = Vi?.normalizeROM ? Vi.normalizeROM(P) : P;
-    ((__crcVal = { crc: __crc32(n), size: n.length }), (__crcFor = P));
+  if (!rom) return null;
+  if (__crcFor !== rom) {
+    let n = emuModule?.normalizeROM ? emuModule.normalizeROM(rom) : rom;
+    ((__crcVal = { crc: __crc32(n), size: n.length }), (__crcFor = rom));
   }
   return __crcVal;
 }
@@ -29,414 +29,11 @@ function __syncRom() {
   try {
     let m = __myRom();
     if (!m || !k) return;
-    Xi || (k(`rom-status`).textContent = `ROM loaded · CRC32 ${m.crc}`);
+    romError || (k(`rom-status`).textContent = `ROM loaded · CRC32 ${m.crc}`);
   } catch {}
 }
 import "./shared.js";
-var m = Object.freeze({
-  genesis: { status: [16762676, 16763544], list: [16762728, 16763596], type: `>u2` },
-  nhl95: { status: [16761584, 16762454], list: [16761636, 16762506], type: `>u2` },
-  snes: { status: [8263762, 8263814], list: [8263866, 8263892], type: `<u2` },
-});
-function h(e, t) {
-  let n = m[t];
-  return !n || typeof e?.read != `function` || typeof e?.byte != `function`
-    ? null
-    : n.list.map((t, r) => {
-        let i = [],
-          a = new Set();
-        for (let o = 0; o < 26; o++) {
-          let s = e.byte(t + o);
-          if (s & 128) return i;
-          if (s > 50 || s % 2 || a.has(s)) return null;
-          a.add(s);
-          let c = e.read(n.status[r] + s, n.type);
-          Number.isInteger(c) && c > 0 && c <= 600 && i.push(c);
-        }
-        return null;
-      });
-}
-function g(e) {
-  return `${Math.floor(e / 60)}:${String(e % 60).padStart(2, `0`)}`;
-}
-function _(e, t, n = e.info()) {
-  let r = t === `genesis` ? n.time & 65535 : n.time;
-  return Number.isInteger(n.time) &&
-    Number.isInteger(n.period) &&
-    n.period >= 0 &&
-    n.period <= 7 &&
-    Number.isInteger(r) &&
-    r >= 0 &&
-    r <= 1200 &&
-    [n.p1_score, n.p2_score].every((e) => Number.isInteger(e) && e >= 0 && e <= 99)
-    ? {
-        homeScore: n.p1_score,
-        awayScore: n.p2_score,
-        seconds: r,
-        period: n.period,
-        periodLabel: [`1ST`, `2ND`, `3RD`, `OT`, `2OT`, `3OT`, `4OT`, `5OT`][n.period],
-        paused: n.paused === !0,
-        penalties: h(e, t),
-      }
-    : null;
-}
-function v(e, t, n) {
-  return;
-  let r = (t, n) => {
-      e.getElementById(t).textContent = n;
-    },
-    i = t && [`playing`, `finished`].includes(n);
-  (r(`home-score`, i ? String(t.homeScore) : `—`),
-    r(`away-score`, i ? String(t.awayScore) : `—`),
-    r(
-      `scoreboard-clock`,
-      i ? `${t.periodLabel} · ${g(t.seconds)}` : n === `lineup` ? `LINEUP` : `PREGAME`,
-    ),
-    r(
-      `scoreboard-status`,
-      n === `finished` ? `MATCH ENDED` : i && t.paused ? `PAUSED` : `LIVE GAME DATA`,
-    ));
-  for (let [e, n] of [`home`, `away`].entries()) {
-    let a = t?.penalties?.[e];
-    r(
-      `${n}-penalties`,
-      i
-        ? a
-          ? a.length
-            ? `PEN ${a.slice(0, 2).map(g).join(` · `)}${a.length > 2 ? ` +${a.length - 2}` : ``}`
-            : ``
-          : `Penalty data unavailable`
-        : ``,
-    );
-  }
-}
-function ee(e) {
-  return `${e.awayTeam} ${e.awayScore} – ${e.homeScore} ${e.homeTeam} · ${e.reason === `mercy` ? `Six-goal mercy` : `Match ended`} · ${e.gameLabel}`;
-}
-function y(e, t, n = {}) {
-  let r = 1200;
-  ((e.canvas.width = r),
-    (e.canvas.height = 800),
-    (e.fillStyle = `#101b31`),
-    e.fillRect(0, 0, r, 800),
-    (e.fillStyle = `#193558`));
-  for (let t = -800; t < r; t += 120)
-    (e.beginPath(),
-      e.moveTo(t, 0),
-      e.lineTo(t + 36, 0),
-      e.lineTo(t + 836, 800),
-      e.lineTo(t + 800, 800),
-      e.fill());
-  let i = (t, n, r, i, a = `#fff`, o = `left`) => {
-    ((e.fillStyle = a),
-      (e.font = `900 ${i}px Arial, sans-serif`),
-      (e.textAlign = o),
-      e.fillText(t, n, r));
-  };
-  return (
-    (e.fillStyle = `#f6c94c`),
-    e.fillRect(48, 42, 9, 83),
-    i(`ONLINE ARENA`, 82, 89, 52),
-    i(`CLASSIC HOCKEY`, 84, 121, 19, `#d6e4f7`),
-    i(t.reason === `mercy` ? `SIX-GOAL MERCY` : `MATCH ENDED`, 1150, 92, 25, `#f6c94c`, `right`),
-    i(t.gameLabel.toUpperCase(), 1150, 122, 18, `#d6e4f7`, `right`),
-    (e.fillStyle = `#efefef`),
-    e.fillRect(48, 176, 1104, 384),
-    (e.fillStyle = `#183656`),
-    e.fillRect(535, 176, 130, 384),
-    (e.imageSmoothingEnabled = !1),
-    n.away && e.drawImage(n.away, 140, 205, 176, 176),
-    n.home && e.drawImage(n.home, 880, 205, 176, 176),
-    i(`AWAY`, 228, 411, 18, `#40566f`, `center`),
-    i(`HOME`, 968, 411, 18, `#40566f`, `center`),
-    i(t.awayTeam, 228, 487, 60, `#101b31`, `center`),
-    i(t.homeTeam, 968, 487, 60, `#101b31`, `center`),
-    i(String(t.awayScore), 430, 422, 112, `#101b31`, `center`),
-    i(String(t.homeScore), 770, 422, 112, `#101b31`, `center`),
-    i(`VS`, 600, 379, 28, `#f6c94c`, `center`),
-    i(
-      t.telemetry
-        ? `${t.telemetry.periodLabel} · ${g(t.telemetry.seconds)} REMAINING`
-        : `SCORE AT END OF SESSION`,
-      600,
-      614,
-      25,
-      `#d6e4f7`,
-      `center`,
-    ),
-    i(
-      `${t.matchType === `tournament` ? `TOURNAMENT RULES` : `REGULAR MATCH`}  /  MERCY ${t.mercyEnabled ? `ON` : `OFF`}`,
-      600,
-      655,
-      18,
-      `#f6c94c`,
-      `center`,
-    ),
-    (e.fillStyle = `#f6c94c`),
-    e.fillRect(48, 700, 1104, 2),
-    i(`CLASSIC HOCKEY. SAME RIVALRY.`, 48, 745, 24),
-    i(`PLAYER-SHARED SCORE · NOT AN OFFICIAL LEAGUE SUBMISSION`, 48, 778, 13, `#aabbd2`),
-    e.canvas
-  );
-}
-async function te(e, t, { nav: n = navigator, download: r } = {}) {
-  if (n.share && n.canShare?.({ files: [e] }))
-    try {
-      return (await n.share({ files: [e], title: `Match result`, text: t }), `shared`);
-    } catch (e) {
-      if (e.name === `AbortError`) return `cancelled`;
-    }
-  return (r(e), `downloaded`);
-}
-function ne(e, t) {
-  let n = 0,
-    r = null,
-    i = null,
-    a = (t) => e.getElementById(t) || document.createElement(`div`),
-    o = (e) => {
-      a(`share-result-status`).textContent = e;
-    },
-    s = (t) => {
-      let n = URL.createObjectURL(t),
-        r = e.createElement(`a`);
-      ((r.href = n),
-        (r.download = t.name),
-        r.click(),
-        setTimeout(() => URL.revokeObjectURL(n), 3e4));
-    };
-  return (
-    a(`download-result`).addEventListener(`click`, () => {
-      r && (s(r), o(`PNG downloaded. Post it wherever you share your games.`));
-    }),
-    a(`share-result`).addEventListener(`click`, async () => {
-      if (!r) return;
-      let e = n,
-        t = r,
-        c = i;
-      a(`share-result`).disabled = !0;
-      try {
-        let r = await te(t, ee(c), { download: s });
-        e === n &&
-          o(
-            r === `cancelled`
-              ? `Sharing cancelled. Your card is still available.`
-              : r === `shared`
-                ? `Result shared.`
-                : `PNG downloaded. This browser does not support image sharing.`,
-          );
-      } catch {
-        e === n && o(`Could not share. Choose Download image to save your card.`);
-      } finally {
-        e === n && (a(`share-result`).disabled = !r);
-      }
-    }),
-    {
-      clear() {
-        (n++,
-          (r = i = null),
-          a(`share-result-preview`).removeAttribute(`src`),
-          (a(`match-share`).hidden = !0),
-          (a(`share-result-preview`).hidden = !0));
-      },
-      async prepare(s) {
-        let c = ++n;
-        ((r = null),
-          (i = s),
-          (a(`match-share`).hidden = !1),
-          (a(`share-result`).disabled = a(`download-result`).disabled = !0),
-          (a(`share-result-preview`).hidden = !0),
-          (a(`share-result-copy`).textContent = ee(s)),
-          o(`Preparing your result card…`));
-        try {
-          let i = (e) =>
-              new Promise((n) => {
-                let r = new Image();
-                ((r.onload = () => n(r)),
-                  (r.onerror = () => n(null)),
-                  (r.src = `${t}game/team-sprites/${s[`${e}Team`]}.png`));
-              }),
-            [l, u] = await Promise.all([i(`home`), i(`away`)]);
-          if (c !== n) return;
-          let d = e.createElement(`canvas`);
-          y(d.getContext(`2d`, { alpha: !1 }), s, { home: l, away: u });
-          let f = await new Promise((e) => d.toBlob(e, `image/png`));
-          if (c !== n) return;
-          if (!f) throw Error(`Image unavailable`);
-          ((r = new File(
-            [f],
-            `match-${s.awayTeam}-${s.awayScore}-${s.homeTeam}-${s.homeScore}.png`,
-            { type: `image/png` },
-          )),
-            (a(`share-result-preview`).src = d.toDataURL(`image/png`)),
-            (a(`share-result-preview`).hidden = !1),
-            (a(`share-result`).disabled = a(`download-result`).disabled = !1),
-            o(`Ready to share. Your card stays on this device.`));
-        } catch {
-          c === n &&
-            o(
-              `Could not create the image. Your score is shown above; try ending the next match again.`,
-            );
-        }
-      },
-    }
-  );
-}
-var ie = {
-    genesis: { game: `NHL94`, console: `Genesis`, base: 16711680, size: 65536, endian: `big` },
-    snes: { game: `NHL94`, console: `SNES`, base: 8257536, size: 131072, endian: `little` },
-    nhl95: { game: `NHL95`, console: `Genesis`, base: 16711680, size: 65536, endian: `big` },
-  };
-function ae(e, t, n) {
-  let r = ie[n.platform];
-  if (!r || !e) throw Error(`Start a supported match before saving stats.`);
-  let i = t ? t.confirmed : e.frames;
-  if (t && t.dirty < i)
-    throw Error(`Waiting for confirmed game inputs. Try saving again in a moment.`);
-  let a = t && t.frame !== i ? t.states.get(i) : null;
-  if (t && t.frame !== i && !a)
-    throw Error(`Confirmed game state is unavailable. Try again in a moment.`);
-  let o = a ? e.save() : null;
-  try {
-    a && e.load(a);
-    let t = e.save();
-    if (!(t.bytes instanceof Uint8Array) || t.bytes.length < 1 || t.bytes.length > 4194304)
-      throw Error(`Game state could not be captured.`);
-    let o = new Uint8Array(r.size);
-    for (let t = 0; t < o.length; t++) o[t] = e.byte(r.base + t);
-    let s = e.info(),
-      c = {};
-    for (let e of [
-      `period`,
-      `time`,
-      `p1_score`,
-      `p2_score`,
-      `p1_shots`,
-      `p2_shots`,
-      `p1_attackzone`,
-      `p2_attackzone`,
-      `p1_bodychecks`,
-      `p2_bodychecks`,
-      `p1_faceoffwon`,
-      `p2_faceoffwon`,
-      `p1_pass_attempts`,
-      `p2_pass_attempts`,
-      `p1_passing`,
-      `p2_passing`,
-    ])
-      Number.isFinite(s[e]) && (c[e] = s[e]);
-    return {
-      native: t.bytes.slice(),
-      ram: o,
-      metadata: {
-        ...structuredClone(n),
-        schema: `king94-stat-export-v1`,
-        capturedAt: new Date().toISOString(),
-        game: r.game,
-        console: r.console,
-        matchFrame: i,
-        emulatorFrame: t.frame,
-        summary: c,
-        verification: `client capture; not an official result`,
-        completion: `screen and match completion must be checked by the collector`,
-        ram: {
-          baseAddress: `0x` + r.base.toString(16),
-          bytes: r.size,
-          byteOrder: `console address order`,
-          wordEndian: r.endian,
-        },
-      },
-    };
-  } finally {
-    o && e.load(o);
-  }
-}
-function se(e) {
-  let t = 4294967295;
-  for (let n of e) {
-    t ^= n;
-    for (let e = 0; e < 8; e++) t = (t >>> 1) ^ (t & 1 ? 3988292384 : 0);
-  }
-  return (t ^ 4294967295) >>> 0;
-}
-var pe = (e) => new TextDecoder().decode(e);
-function me(e) {
-  if (!(e instanceof Uint8Array) || e.length < 32 || e.length > 5242880)
-    throw Error(`Choose a .state file or stats ZIP (up to 5 MB).`);
-  if (pe(e.subarray(0, 7)) !== `RASTATE` || e[7] !== 1)
-    throw Error(`Use an uncompressed RetroArch .state exported by this site.`);
-  let t = new DataView(e.buffer, e.byteOffset, e.byteLength),
-    n = 8,
-    r = null;
-  for (; n + 8 <= e.length;) {
-    let i = pe(e.subarray(n, n + 4)),
-      a = t.getUint32(n + 4, !0),
-      o = n + 8 + a;
-    if (o > e.length) throw Error(`State file is incomplete.`);
-    if (i === `END `) {
-      if (a || o !== e.length || !r) throw Error(`Invalid state ending.`);
-      return r;
-    }
-    if (i === `MEM `) {
-      if (r || !a || a > 4194304) throw Error(`Invalid core state.`);
-      r = e.slice(n + 8, o);
-    }
-    n += 8 + Math.ceil(a / 8) * 8;
-  }
-  throw Error(`State file is incomplete.`);
-}
-function he(e) {
-  if (!(e instanceof Uint8Array) || e.length > 5242880)
-    throw Error(`State files must be no larger than 5 MB.`);
-  if (pe(e.subarray(0, 7)) === `RASTATE`) return { native: me(e), metadata: null };
-  if (
-    e.length < 30 ||
-    new DataView(e.buffer, e.byteOffset, e.byteLength).getUint32(0, !0) !== 67324752
-  )
-    throw Error(`Choose a .state file or a stats ZIP exported by this site.`);
-  let t = new DataView(e.buffer, e.byteOffset, e.byteLength),
-    n = new Map(),
-    r = 0,
-    i = 0;
-  for (; r + 30 <= e.length && t.getUint32(r, !0) === 67324752;) {
-    if (++i > 8) throw Error(`Unexpected stats ZIP contents.`);
-    let a = t.getUint16(r + 6, !0),
-      o = t.getUint16(r + 8, !0),
-      s = t.getUint32(r + 14, !0),
-      c = t.getUint32(r + 18, !0),
-      l = t.getUint32(r + 22, !0),
-      u = t.getUint16(r + 26, !0),
-      d = t.getUint16(r + 28, !0),
-      f = r + 30 + u + d,
-      p = f + c;
-    if (a || o || c !== l || u > 256 || p > e.length)
-      throw Error(`Use the original, uncompressed stats ZIP.`);
-    let m = pe(e.subarray(r + 30, r + 30 + u)),
-      h = e.subarray(f, p);
-    if (n.has(m) || se(h) !== s) throw Error(`Stats ZIP is damaged.`);
-    (n.set(m, h), (r = p));
-  }
-  if (!n.has(`match.state`) || !n.has(`match.json`) || n.get(`match.json`).length > 16384)
-    throw Error(`Stats ZIP is missing its state or match details.`);
-  let a;
-  try {
-    a = JSON.parse(pe(n.get(`match.json`)));
-  } catch {
-    throw Error(`Invalid match details in stats ZIP.`);
-  }
-  if (!a || a.schema !== `king94-stat-export-v1`) throw Error(`Unsupported stats ZIP version.`);
-  return { native: me(n.get(`match.state`)), metadata: a };
-}
-function ge(e, t, n) {
-  let r = e.save().bytes;
-  if (t.length !== r.length || !r.subarray(0, 16).every((e, n) => t[n] === e))
-    throw Error(
-      `State format does not match this emulator core. Use a state exported by this site for the selected game.`,
-    );
-  return (e.load({ bytes: t, frame: 0 }), n(), e.info());
-}
-var xe = Object.freeze([`genesis`, `snes`, `nhl95`]),
-  Se = (e) => xe.includes(e),
-  vn = [
+var vn = [
     { id: `up`, label: `D-pad Up`, bit: 16, hint: `Press UP on the D-pad` },
     { id: `down`, label: `D-pad Down`, bit: 32, hint: `Press DOWN on the D-pad` },
     { id: `left`, label: `D-pad Left`, bit: 64, hint: `Press LEFT on the D-pad` },
@@ -450,8 +47,8 @@ var xe = Object.freeze([`genesis`, `snes`, `nhl95`]),
     ...vn.slice(0, 4),
     { id: `a`, label: `SNES A`, bit: 2, hint: `Press SNES A` },
     { id: `b`, label: `SNES B`, bit: 1, hint: `Press SNES B` },
-    { id: `y`, label: `SNES Y · check / recovery`, required: !0, bit: 512, hint: `Press SNES Y` },
-    { id: `x`, label: `SNES X · goalie`, required: !0, bit: 1024, hint: `Press SNES X` },
+    { id: `y`, label: `SNES Y`, required: !0, bit: 512, hint: `Press SNES Y` },
+    { id: `x`, label: `SNES X`, required: !0, bit: 1024, hint: `Press SNES X` },
     { id: `l`, label: `SNES L`, bit: 2048, hint: `Press SNES L` },
     { id: `r`, label: `SNES R`, bit: 4, hint: `Press SNES R` },
     vn.at(-1),
@@ -1133,172 +730,6 @@ var ir = {
       return ((r |= i), r);
     }
   };
-function lr(e = globalThis.indexedDB) {
-  return e
-    ? new Promise((t) => {
-        let n = !1,
-          r = (e) => {
-            if (n) {
-              e?.close();
-              return;
-            }
-            ((n = !0), clearTimeout(i), t(e));
-          },
-          i = setTimeout(() => r(null), 1500),
-          a;
-        try {
-          a = e.open(`king94-disc-cache`, 1);
-        } catch {
-          r(null);
-          return;
-        }
-        ((a.onupgradeneeded = () => a.result.createObjectStore(`chunks`)),
-          (a.onerror = () => r(null)),
-          (a.onblocked = () => r(null)),
-          (a.onsuccess = () => {
-            let e = a.result,
-              t = (t, n) =>
-                new Promise((r, i) => {
-                  let a;
-                  try {
-                    let o = e.transaction(`chunks`, t),
-                      s = n(o.objectStore(`chunks`));
-                    ((s.onsuccess = () => {
-                      a = s.result;
-                    }),
-                      (o.oncomplete = () => r(a)),
-                      (o.onabort = o.onerror =
-                        () => i(o.error || Error(`Disc cache unavailable.`))));
-                  } catch (e) {
-                    i(e);
-                  }
-                });
-            (r({
-              get: (e) => t(`readonly`, (t) => t.get(e)),
-              put: (e, n) => t(`readwrite`, (t) => t.put(n, e)),
-              remove: (e) => t(`readwrite`, (t) => t.delete(e)),
-              clear: () => t(`readwrite`, (e) => e.clear()),
-              close: () => e.close(),
-            }),
-              (e.onversionchange = () => e.close()));
-          }));
-      })
-    : Promise.resolve(null);
-}
-var ur = 4194304,
-  dr = async (e) =>
-    Array.from(new Uint8Array(await crypto.subtle.digest(`SHA-256`, e)), (e) =>
-      e.toString(16).padStart(2, `0`),
-    ).join(``);
-async function fr(
-  e,
-  t,
-  {
-    fetcher: n = fetch,
-    onProgress: r = () => {},
-    expectedHash: i = null,
-    cacheFactory: a = lr,
-    workers: o = i ? 4 : 2,
-  } = {},
-) {
-  if (!Number.isSafeInteger(t) || t < 1 || t > 536870912) throw Error(`Invalid disc size.`);
-  if (i !== null && !/^[a-f0-9]{64}$/.test(i)) throw Error(`Invalid disc identity.`);
-  if (!Number.isSafeInteger(o) || o < 1 || o > 4) throw Error(`Invalid disc worker count.`);
-  let s = new URL(e, globalThis.location?.href || `https://tester.invalid`),
-    c = null,
-    l = !1;
-  if (i) {
-    let e = new URL(s.href);
-    e.searchParams.set(`info`, `1`);
-    let r = await n(e.href, { credentials: `same-origin`, cache: `no-store` });
-    if (
-      r.status === 401 ||
-      r.status === 403 ||
-      r.status === 303 ||
-      (r.redirected && new URL(r.url).pathname.startsWith(`${globalThis.__BASE}login`))
-    )
-      throw Error(`Your tester session expired. Sign in again to load Sega CD.`);
-    if (r.status !== 200 || !r.headers.get(`content-type`)?.startsWith(`application/json`))
-      throw Error(`Sega CD disc information is unavailable. Reload to retry.`);
-    if ((await r.json()).bytes !== t)
-      throw Error(`The Sega CD disc version has changed. Reload the page.`);
-    try {
-      ((c = await a()), (l = !!c));
-    } catch {}
-  }
-  let u = new Uint8Array(t),
-    d = new AbortController(),
-    f = 0,
-    p = 0,
-    m = 0,
-    h = 0,
-    g = !1,
-    _ = (e) =>
-      r(p / t, { phase: e, cachedBytes: h, downloadedBytes: m, cacheAvailable: l, totalBytes: t }),
-    v = (e) => `${i}:${t}:${e}`,
-    ee = () => {
-      l = !1;
-    };
-  async function y() {
-    try {
-      for (; !g && f < t;) {
-        let e = f,
-          r = Math.min(ur, t - e);
-        f += r;
-        let i;
-        if (l)
-          try {
-            let t = await c.get(v(e));
-            t?.bytes instanceof Uint8Array &&
-            t.bytes.byteLength === r &&
-            (await dr(t.bytes)) === t.hash
-              ? ((i = t.bytes), (h += r))
-              : t && (await c.remove(v(e)));
-          } catch {
-            ee();
-          }
-        if (g) return;
-        if (!i) {
-          let a = new URL(s.href);
-          (a.searchParams.set(`offset`, String(e)), a.searchParams.set(`length`, String(r)));
-          let o = await n(a.href, { credentials: `same-origin`, signal: d.signal });
-          if (o.status !== 206 || o.headers.get(`content-range`) !== `bytes ${e}-${e + r - 1}/${t}`)
-            throw Error(
-              `The Sega CD disc could not be loaded. Sign in again or reload; saved chunks will resume.`,
-            );
-          if (((i = new Uint8Array(await o.arrayBuffer())), i.byteLength !== r))
-            throw Error(`The Sega CD download was incomplete.`);
-          if (g) return;
-          if (((m += r), l))
-            try {
-              await c.put(v(e), { bytes: i, hash: await dr(i) });
-            } catch {
-              ee();
-            }
-        }
-        if (g) return;
-        (u.set(i, e), (p += r), _(`loading`));
-      }
-    } catch (e) {
-      throw ((g = !0), d.abort(), e);
-    }
-  }
-  try {
-    i && _(`checking`);
-    let e = (await Promise.allSettled(Array.from({ length: o }, y))).find(
-      (e) => e.status === `rejected`,
-    );
-    if (e) throw e.reason;
-    if (i && (_(`verifying`), (await dr(u)) !== i))
-      throw (
-        await c?.clear().catch(() => {}),
-        Error(`Sega CD disc verification failed. Reload to download a clean copy.`)
-      );
-    return u;
-  } finally {
-    c?.close();
-  }
-}
 var pr = class {
     constructor() {
       ((this.context = null), (this.next = 0), (this.attempt = 0), (this.gain = null));
@@ -1381,1489 +812,602 @@ var pr = class {
       } catch {}
       this.next = 0;
     }
-  },
-  mr = Object.freeze({
-    id: `king94-genesis-2026-10-v1`,
-    console: `genesis`,
-    periodMinutes: 5,
-    offsides: !1,
-    penalties: !0,
-    lineChanges: !1,
-    goalie: `manual`,
-    mercyGoalDifference: 6,
-    allowTies: !1,
-    turboAllowed: !1,
-    overtime: `restart-sudden-death-after-tied-overtime`,
-    lineEdits: `pregame-or-stoppage`,
-  }),
-  hr = Object.freeze(
-    [
-      [`ANA`, `Anaheim Mighty Ducks`],
-      [`BOS`, `Boston Bruins`],
-      [`BUF`, `Buffalo Sabres`],
-      [`CGY`, `Calgary Flames`],
-      [`CHI`, `Chicago Blackhawks`],
-      [`DAL`, `Dallas Stars`],
-      [`DET`, `Detroit Red Wings`],
-      [`EDM`, `Edmonton Oilers`],
-      [`FLA`, `Florida Panthers`],
-      [`HFD`, `Hartford Whalers`],
-      [`LA`, `Los Angeles Kings`],
-      [`MTL`, `Montreal Canadiens`],
-      [`NJ`, `New Jersey Devils`],
-      [`NYI`, `New York Islanders`],
-      [`NYR`, `New York Rangers`],
-      [`OTT`, `Ottawa Senators`],
-      [`PHI`, `Philadelphia Flyers`],
-      [`PIT`, `Pittsburgh Penguins`],
-      [`QUE`, `Quebec Nordiques`],
-      [`SJ`, `San Jose Sharks`],
-      [`STL`, `St. Louis Blues`],
-      [`TB`, `Tampa Bay Lightning`],
-      [`TOR`, `Toronto Maple Leafs`],
-      [`VAN`, `Vancouver Canucks`],
-      [`WSH`, `Washington Capitals`],
-      [`WPG`, `Winnipeg Jets`],
-    ].map(([e, t]) => Object.freeze({ id: e, name: t })),
-  ),
-  gr = Object.freeze(
-    [
-      [`CHI`, `DET`],
-      [`BUF`, `VAN`],
-      [`MTL`, `BOS`],
-      [`WPG`, `CGY`],
-      [`DAL`, `LA`],
-      [`QUE`, `TOR`],
-      [`NYR`, `EDM`],
-      [`PHI`, `PIT`],
-      [`STL`, `WSH`],
-      [`HFD`, `NJ`],
-      [`NYI`, `SJ`],
-      [`TB`, `FLA`],
-      [`OTT`, `ANA`],
-    ].map((e, t) => Object.freeze({ id: `pair-${t + 1}`, pair: Object.freeze(e) })),
-  );
-function _r({ pair: e, usedTeams: t = [], allowedTeams: n = hr.map((e) => e.id) }) {
-  return !Array.isArray(e) || e.length !== 2
-    ? { valid: !1, reason: `Call exactly two teams.` }
-    : e[0] === e[1]
-      ? { valid: !1, reason: `Choose two different teams.` }
-      : e.some((e) => !n.includes(e))
-        ? { valid: !1, reason: `Team is not enabled in this event.` }
-        : e.some((e) => t.includes(e))
-          ? { valid: !1, reason: `A called team has already been used in this scope.` }
-          : { valid: !0, reason: null };
-}
-function vr(e, t) {
-  let n = _r({ pair: e });
-  if (!n.valid) throw Error(n.reason);
-  if (!e.includes(t)) throw Error(`Home must choose one of the two called teams.`);
-  return { homeTeam: t, awayTeam: e.find((e) => e !== t) };
-}
-function yr({
-  homeScore: e,
-  awayScore: t,
-  regulationAndOvertimeEnded: n = !1,
-  mercyEnabled: r = !0,
-}) {
-  if (![e, t].every((e) => Number.isInteger(e) && e >= 0)) throw Error(`Invalid score.`);
-  let i = e - t;
-  return r && Math.abs(i) >= mr.mercyGoalDifference
-    ? { status: `complete`, reason: `mercy`, winner: i > 0 ? `home` : `away` }
-    : n
-      ? i === 0
-        ? { status: `restart-sudden-death`, carryPenalties: !1, carryInjuries: !1 }
-        : { status: `complete`, reason: `time`, winner: i > 0 ? `home` : `away` }
-      : { status: `playing` };
-}
-var Ur = [
-    `mercy`,
-    `ended`,
-    `left`,
-    `remote-left`,
-    `connection-closed`,
-    `hidden`,
-    `hidden-timeout`,
-    `error`,
-    `page-closed`,
-  ],
-  Wr = (e, t, n) => Number.isSafeInteger(e) && e >= t && e <= n;
-function Gr(e) {
-  return e.map(([e, t, n]) => `${e.toString(16)}.${t.toString(16)}.${n.toString(36)}`).join(` `);
-}
-var Kr = class {
-    constructor(e) {
-      ((this.meta = e),
-        (this.runs = []),
-        (this.frames = 0),
-        (this.reason = null),
-        (this.score = null),
-        (this.finished = !1),
-        (this.inputChars = 0));
-    }
-    push(e, t, n) {
-      if (this.finished) return;
-      if (e !== this.frames) throw Error(`Recorder expected frame ${this.frames}, got ${e}.`);
-      if (!Wr(t, 0, 4095) || !Wr(n, 0, 4095)) throw Error(`Recorder got an invalid input mask.`);
-      let r = this.runs[this.runs.length - 1],
-        i = r && r[0] === t && r[1] === n,
-        a = i
-          ? (r[2] + 1).toString(36).length - r[2].toString(36).length
-          : t.toString(16).length + n.toString(16).length + 3 + +!!r;
-      if (this.frames >= 4e5 || this.inputChars + a > 45e4)
-        throw (
-          (this.finished = !0),
-          (this.runs = []),
-          (this.score = null),
-          Error(`Recording reached its size limit; gameplay can continue.`)
-        );
-      ((this.inputChars += a), i ? r[2]++ : this.runs.push([t, n, 1]), this.frames++);
-    }
-    setScore(e, t, n, r) {
-      Wr(e, 0, 1e6) &&
-        Wr(t, 0, 99) &&
-        Wr(n, 0, 99) &&
-        (this.score = {
-          frame: e,
-          homeScore: t,
-          awayScore: n,
-          status: String(r || `playing`).slice(0, 40),
-        });
-    }
-    setReason(e) {
-      !this.reason && Ur.includes(e) && (this.reason = e);
-    }
-    export(t = null, min = 60) {
-      if (this.frames < min) return null;
-      let r = this.meta;
-      return {
-        v: 1,
-        matchId: r.matchId,
-        side: r.side,
-        mode: r.mode,
-        started: r.started,
-        frames: this.frames,
-        config: r.config,
-        coreHash: r.coreHash,
-        startStateHash: r.startStateHash,
-        startState: r.startState || null,
-        romCrc: r.romCrc,
-        romName: r.romName,
-        reason: this.reason,
-        inputs: Gr(this.runs),
-        net: t,
-      };
-    }
-    finish(e, t = null, n = new Date()) {
-      if (
-        this.finished ||
-        ((this.finished = !0), this.setReason(e), this.setReason(`ended`), this.frames < 120)
-      )
-        return null;
-      let r = this.meta;
-      return {
-        v: 1,
-        id: `${r.matchId}-${r.side}`,
-        matchId: r.matchId,
-        side: r.side,
-        mode: r.mode,
-        started: r.started,
-        ended: n.toISOString(),
-        reason: this.reason,
-        frames: this.frames,
-        config: r.config,
-        romSha256: r.romSha256,
-        coreHash: r.coreHash,
-        rollbackVersion: r.rollbackVersion,
-        startStateHash: r.startStateHash,
-        startState: r.startState || null,
-        romCrc: r.romCrc,
-        romName: r.romName,
-        inputs: Gr(this.runs),
-        result: this.score,
-        net: t,
-      };
-    }
   };
-var ei = Object.freeze(
-    [
-      [`PIT`, `BOS`],
-      [`DET`, `CHI`],
-      [`NYR`, `CGY`],
-      [`LA`, `BUF`],
-      [`VAN`, `MTL`],
-      [`WPG`, `TOR`],
-      [`QUE`, `WSH`],
-      [`PHI`, `STL`],
-      [`NJ`, `DAL`],
-      [`EDM`, `HFD`],
-      [`NYI`, `SJ`],
-      [`OTT`, `TB`],
-      [`FLA`, `ANA`],
-    ].map((e, t) => Object.freeze({ id: `snes-pair-${t + 1}`, pair: Object.freeze(e) })),
-  ),
-  ti = Object.freeze({
+// ---------- emulator app: system + ROM setup, game loop, replays ----------
+// Phases: lobby (setup) -> preparing (booting the core) -> playing.
+var PLATFORMS = Object.freeze({
     genesis: {
       name: `Sega Genesis`,
       tag: `GENESIS`,
       emu: `emu.js`,
-      boot: `boot.js`,
-      media: `nhl94.bin`,
-      bytes: 1048576,
-      files: [`core/gpgx.wasm`, `core/gpgx.mjs`, `emu.js`, `boot.js`],
+      core: [`core/gpgx.wasm`, `core/gpgx.mjs`],
       mask: 507,
-      pairingNote: `Choose any two teams.`,
-      note: `Genesis controls. Manual goalie control uses the original game controls.`,
+      note: `Work RAM is $FF0000–$FFFFFF (64 KiB).`,
+      // Builds before 2026-10 also hashed emu.js and boot.js; their saves and replays still load.
+      legacyCoreHashes: [`6e7886e6d2968d4a4e5082b280b7fc60771261be5e06da19ae4f318f97d6aae1`],
     },
     snes: {
       name: `Super Nintendo`,
       tag: `SNES`,
       emu: `snes.js`,
-      boot: `snes-boot.js`,
-      media: `nhl94.sfc`,
-      bytes: 1048576,
-      files: [`core/snes.wasm`, `core/snes.mjs`, `snes.js`, `snes-boot.js`],
+      core: [`core/snes.wasm`, `core/snes.mjs`],
       mask: 3839,
-      pairingNote: `Choose any two teams.`,
-      note: `SNES has its own controls. X selects the manual goalie; Y checks/holds and can get a knocked-down skater back up. The Y recovery trick is allowed. Pass shots are allowed. Native SNES gameplay differences remain.`,
+      note: `Work RAM is $7E0000–$7FFFFF (128 KiB).`,
+      legacyCoreHashes: [`b7af4a486902487b541862c0d98be67ade00610ddb4a7c2321e4871e1067236b`],
     },
-    nhl95: {
-      game: `nhl95`,
-      gameName: `NHL ’95`,
-      name: `Sega Genesis`,
-      tag: `NHL ’95`,
-      emu: `nhl95.js`,
-      boot: `nhl95-boot.js`,
-      media: `nhl95.bin`,
-      bytes: 2097152,
-      files: [
-        `core/gpgx.wasm`,
-        `core/gpgx.mjs`,
-        `emu.js`,
-        `ramvars.js`,
-        `boot.js`,
-        `nhl95.js`,
-        `nhl95-boot.js`,
-      ],
-      mask: 507,
-      pairingNote: `Each player chooses their own team. Regular teams only; choose different teams.`,
-      note: `NHL ’95 on Genesis. Each player chooses their own team. The locked match conditions are an online adaptation for this game; its original gameplay differences remain.`,
-    },
-    segacd: {
-      name: `Sega CD`,
-      tag: `SEGA CD`,
-      emu: `segacd.js`,
-      boot: `segacd-boot.js`,
-      media: `nhl94.chd`,
-      bios: `bios_CD_U.bin`,
-      bytes: 227439378,
-      files: [
-        `core/segacd.wasm`,
-        `core/segacd.mjs`,
-        `emu.js`,
-        `ramvars.js`,
-        `boot.js`,
-        `segacd.js`,
-        `segacd-boot.js`,
-      ],
-      mask: 507,
-      mediaHash: `642215da118e2dfe4432dee82f299627f2945fb756dce134db00735d0520916d`,
-      pairingNote: `Genesis pairings reused for Sega CD practice; these are an online adaptation.`,
-      note: `Sega CD uses Sega controls. The first disc download is 227 MB; saved chunks make return visits faster and resume interrupted downloads. Sega CD is an online adaptation.`,
-    },
-  });
-function D(e = `genesis`) {
-  if (typeof e != `string` || !Object.hasOwn(ti, e)) throw Error(`Unsupported game platform.`);
-  return ti[e];
+  }),
+  REPLAY_FORMATS = [`EMU-REPLAY`, `NHL94-REPLAY`];
+function platformInfo(p) {
+  if (typeof p != `string` || !Object.hasOwn(PLATFORMS, p)) throw Error(`Unsupported system.`);
+  return PLATFORMS[p];
 }
-function ni(e = `genesis`) {
-  return (
-    D(e),
-    e === `genesis` ? mr : Object.freeze({ ...mr, id: `king94-${e}-2026-10-v1`, console: e })
-  );
-}
-function ri(e = `genesis`) {
-  return (D(e), e === `nhl95` ? [] : e === `snes` ? ei : gr);
-}
-var ai = Object.freeze({
-    ANA: `Anaheim`,
-    BOS: `Boston`,
-    BUF: `Buffalo`,
-    CGY: `Calgary`,
-    CHI: `Chicago`,
-    DAL: `Dallas`,
-    DET: `Detroit`,
-    EDM: `Edmonton`,
-    FLA: `Florida`,
-    HFD: `Hartford`,
-    LA: `Los Angeles`,
-    MTL: `Montreal`,
-    NJ: `New Jersey`,
-    NYI: `NY Islanders`,
-    NYR: `NY Rangers`,
-    OTT: `Ottawa`,
-    PHI: `Philadelphia`,
-    PIT: `Pittsburgh`,
-    QUE: `Quebec`,
-    SJ: `San Jose`,
-    STL: `St. Louis`,
-    TB: `Tampa Bay`,
-    TOR: `Toronto`,
-    VAN: `Vancouver`,
-    WSH: `Washington`,
-    WPG: `Winnipeg`,
-  });
-function ci(e, t, n = 3, r = 0, i = `genesis`, a = {}) {
-  D(i);
-  let o = _r({ pair: e });
-  if (!o.valid) throw Error(o.reason);
-  if (!Number.isSafeInteger(n) || n < 3 || n > 8) throw Error(`Invalid network delay.`);
-  if (![0, 1].includes(r)) throw Error(`Invalid host player side.`);
-  let s = a.matchType ?? `exhibition`,
-    c = a.mercyEnabled ?? s === `tournament`;
-  if (![`exhibition`, `tournament`].includes(s) || typeof c != `boolean`)
-    throw Error(`Invalid match rules.`);
-  let l = vr(e, t);
-  return {
-    version: 1,
-    platform: i,
-    matchType: s,
-    mercyEnabled: c,
-    rules: { ...ni(i) },
-    pair: i === `nhl95` ? [l.homeTeam, l.awayTeam] : [...e],
-    ...l,
-    hostSlot: r,
-    delay: n,
-    window: 12,
-  };
-}
-function O(e) {
+function canonical(e) {
   return Array.isArray(e)
-    ? `[${e.map(O).join(`,`)}]`
+    ? `[${e.map(canonical).join(`,`)}]`
     : e && typeof e == `object`
       ? `{${Object.keys(e)
           .sort()
-          .map((t) => `${JSON.stringify(t)}:${O(e[t])}`)
+          .map((t) => `${JSON.stringify(t)}:${canonical(e[t])}`)
           .join(`,`)}}`
       : JSON.stringify(e);
 }
-async function li(e) {
-  let t = e instanceof Uint8Array ? e : new TextEncoder().encode(O(e)),
+async function sha256Hex(e) {
+  let t = e instanceof Uint8Array ? e : new TextEncoder().encode(canonical(e)),
     n = await crypto.subtle.digest(`SHA-256`, t);
   return Array.from(new Uint8Array(n), (e) => e.toString(16).padStart(2, `0`)).join(``);
 }
-var hi = `modulepreload`,
-  gi = function (e) {
-    return `${globalThis.__BASE}` + e;
-  },
-  _i = {},
-  vi = function (e) {
-    return e.pathname.endsWith(`.css`);
-  },
-  yi = function (e, t, n) {
-    let r = Promise.resolve();
-    if (t && t.length > 0) {
-      let e,
-        i = document.querySelector(`meta[property=csp-nonce]`),
-        a = i?.nonce || i?.getAttribute(`nonce`);
-      function o(e) {
-        return Promise.all(
-          e.map((e) =>
-            Promise.resolve(e).then(
-              (e) => ({ status: `fulfilled`, value: e }),
-              (e) => ({ status: `rejected`, reason: e }),
-            ),
-          ),
-        );
-      }
-      function s(e) {
-        return import.meta.resolve ? new URL(import.meta.resolve(e)) : new URL(e, import.meta.url);
-      }
-      r = o(
-        t
-          .map((t) => {
-            t = gi(t, n);
-            let r = s(t);
-            if (r.href in _i) return;
-            _i[r.href] = !0;
-            let i = vi(r);
-            if (e === void 0) {
-              e = { all: new Set(), styles: new Set() };
-              let t = document.getElementsByTagName(`link`);
-              for (let n = t.length - 1; n >= 0; n--) {
-                let r = t[n];
-                (e.all.add(r.href), r.rel === `stylesheet` && e.styles.add(r.href));
-              }
-            }
-            if ((i ? e.styles : e.all).has(r.href)) return;
-            let o = document.createElement(`link`);
-            if (
-              ((o.rel = i ? `stylesheet` : hi),
-              i || (o.as = `script`),
-              (o.crossOrigin = ``),
-              (o.href = r.href),
-              a && o.setAttribute(`nonce`, a),
-              document.head.appendChild(o),
-              i)
-            )
-              return new Promise((e, t) => {
-                (o.addEventListener(`load`, e),
-                  o.addEventListener(`error`, () => t(Error(`Unable to preload CSS for ${r}`))));
-              });
-          })
-          .filter((e) => e !== void 0),
-      );
-    }
-    function i(e) {
-      let t = new Event(`vite:preloadError`, { cancelable: !0 });
-      if (((t.payload = e), window.dispatchEvent(t), !t.defaultPrevented)) throw e;
-    }
-    return r.then((t) => {
-      for (let e of t || []) e.status === `rejected` && i(e.reason);
-      return e().catch(i);
-    });
-  },
+
+// Run-length input recorder for replays: runs of [p1 mask, p2 mask, frame count].
+var inRange = (e, t, n) => Number.isSafeInteger(e) && e >= t && e <= n;
+class Recorder {
+  constructor(meta) {
+    ((this.meta = meta), (this.runs = []), (this.frames = 0), (this.finished = !1), (this.inputChars = 0));
+  }
+  push(frame, p1, p2) {
+    if (this.finished) return;
+    if (frame !== this.frames) throw Error(`Recorder expected frame ${this.frames}, got ${frame}.`);
+    if (!inRange(p1, 0, 4095) || !inRange(p2, 0, 4095)) throw Error(`Recorder got an invalid input mask.`);
+    let last = this.runs[this.runs.length - 1],
+      same = last && last[0] === p1 && last[1] === p2,
+      cost = same
+        ? (last[2] + 1).toString(36).length - last[2].toString(36).length
+        : p1.toString(16).length + p2.toString(16).length + 3 + +!!last;
+    if (this.frames >= 4e5 || this.inputChars + cost > 45e4)
+      throw ((this.finished = !0), (this.runs = []), Error(`Recording reached its size limit; the game can continue.`));
+    ((this.inputChars += cost), same ? last[2]++ : this.runs.push([p1, p2, 1]), this.frames++);
+  }
+  export(min = 60) {
+    if (this.frames < min) return null;
+    let m = this.meta;
+    return {
+      frames: this.frames,
+      config: m.config,
+      coreHash: m.coreHash,
+      startStateHash: m.startStateHash,
+      startState: m.startState || null,
+      romCrc: m.romCrc,
+      romName: m.romName,
+      inputs: this.runs.map(([a, b, n]) => `${a.toString(16)}.${b.toString(16)}.${n.toString(36)}`).join(` `),
+    };
+  }
+}
+
+var BASE = `${globalThis.__BASE}`,
   k = (e) =>
     document.getElementById(e) ||
     (__stubs[e] ??= Object.assign(document.createElement(`div`), { hidden: !0 })),
-  A = new pr(),
-  bi = new cr(
-    () => [`lineup`, `playing`].includes(j) && !W,
-    () => z.platform,
+  audio = new pr(),
+  keys = new cr(
+    () => phase === `playing` && !paused,
+    () => config.platform,
   ),
-  j = `lobby`,
-  P = null,
-  Si = null,
-  Ci = null,
-  wi = null,
-  F = null,
-  z = ci([`MTL`, `BOS`], `MTL`),
-  Ai = !0,
-  H = null,
-  U = 0,
-  Fi = 0,
-  Ii = null,
-  Li = 0,
-  W = !1,
-  Bi = 0,
-  Vi = null,
-  Hi = null,
-  Ui = null,
-  Wi = null,
-  Yi = 0,
-  Xi = null,
-  G = !1,
-  Zi = Promise.resolve(),
-  K = !1,
-  Qi = 0,
-  $i = `two`,
-  ea = 0,
-  ta = null,
-  na = null,
-  ra = null,
-  ia = !1,
-  ga = null,
-  _a = null,
-  Sa = new Map(),
-  q = null,
-  Ea = null,
-  J = !1,
-  Oa = 0;
-function ka() {
-  return q &&
-    q.platform === z.platform &&
-    q.homeTeam === z.homeTeam &&
-    q.awayTeam === z.awayTeam &&
-    q.players === $a()
-    ? q
-    : null;
-}
-function Ma() {
-  let e = j === `lobby` && !K && !G && !J;
-  ((k(`load-state`).disabled = k(`load-state-file`).disabled = !e),
-    (k(`recover-last-state`).disabled = !e || !Sa.has(z.platform)),
-    (k(`clear-loaded-state`).disabled = !e || !q));
-  let t = ka();
-  k(`loaded-state-status`).textContent = J
-    ? `Checking your saved game…`
-    : t
-      ? `Saved game ready · ${z.homeTeam} ${t.info.p1_score} – ${t.info.p2_score} ${z.awayTeam}. Start to resume this saved game.`
-      : q
-        ? `Choose the saved game’s original teams and player mode, or clear it to start fresh.`
-        : `No saved game loaded. New matches start normally.`;
-}
-async function Na(e) {
-  if (j !== `lobby` || K || G || J) throw Error(`Return to setup before loading the state.`);
-  if (!P || !Hi?.verifyMatchSettings) throw Error(`Wait for the selected game to finish loading.`);
-  let t = ++Oa,
-    n = U,
-    r = O(z),
-    i = $a(),
-    a = Ui,
-    o = Si;
-  ((J = !0), Z());
-  let s;
-  try {
-    let { native: c, metadata: l } = e;
-    if (
-      l &&
-      (l.platform !== z.platform ||
-        l.coreIdentity !== a ||
-        l.config?.homeTeam !== z.homeTeam ||
-        l.config?.awayTeam !== z.awayTeam ||
-        l.players !== i)
-    )
-      throw Error(
-        `Select this save’s original game, home/away teams and player mode. It must use this site’s current core and ROM version.`,
-      );
-    if (
-      ((s = await (Vi.Genesis || Vi.SNES).create(P, {
-        locateFile: (e) => (e.endsWith(`.wasm`) ? `${globalThis.__BASE}game/core/` + e : e),
-      })),
-      t !== Oa || n !== U || j !== `lobby` || r !== O(z) || i !== $a())
-    )
-      throw Error(`Setup changed while loading. Choose the state again.`);
-    let u = ge(s, c, () => Hi.verifyMatchSettings(s, ai[z.homeTeam], ai[z.awayTeam], i)),
-      d = await li(c);
-    if (t !== Oa || n !== U || j !== `lobby` || r !== O(z) || i !== $a())
-      throw Error(`Setup changed while loading. Choose the state again.`);
-    ((q = {
-      bytes: c.slice(),
-      hash: d,
-      platform: z.platform,
-      homeTeam: z.homeTeam,
-      awayTeam: z.awayTeam,
-      players: i,
-      info: u,
-    }),
-      Y(`Saved game checked. Choose Start to resume.`));
-  } finally {
-    (s?.dispose(), t === Oa && ((J = !1), Z()));
-  }
-}
-async function Pa() {
-  let e = k(`load-state-file`).files?.[0];
-  if (e)
-    try {
-      if (e.size > 5242880) throw Error(`State files must be no larger than 5 MB.`);
-      let t = O(z),
-        n = U,
-        r = new Uint8Array(await e.arrayBuffer());
-      if (n !== U || t !== O(z))
-        throw Error(`Setup changed while reading. Choose the state again.`);
-      await Na(he(r));
-    } catch (e) {
-      Y(`Could not load state: ` + e.message + ` Check the original teams and player mode.`);
-    } finally {
-      k(`load-state-file`).value = ``;
-    }
-}
-function Fa(e) {
-  return ae(F, null, {
-    platform: z.platform,
-    config: z,
-    matchId: H,
-    mode: `local`,
-    players: $a(),
-    phase: j,
-    reason: e,
-    romSha256: Si,
-    coreVersion: Vi?.CORE_VERSION,
-    coreIdentity: Ui,
-    ...(Ea ? { resumedFromStateHash: Ea.hash } : {}),
-  });
-}
-function Ia(e) {
-  if (!F || ![`lineup`, `playing`, `finished`].includes(j)) return;
-  let t = Sa.get(z.platform);
-  if (t?.metadata.matchId !== H || t.metadata.reason === `player-request`)
-    try {
-      Sa.set(z.platform, Fa(e));
-    } catch {}
-}
-function Y(e) {
+  phase = `lobby`,
+  config = { version: 2, platform: `genesis` },
+  rom = null, // ROM bytes for the selected system
+  romSha = null,
+  romError = null,
+  romSeq = 0,
+  loading = !1, // reading a ROM or switching system
+  platformChange = Promise.resolve(),
+  emuModule = null, // game/emu.js or game/snes.js
+  coreHash = null,
+  coreLoad = null,
+  emu = null, // the running emulator instance
+  runId = null,
+  generation = 0,
+  starting = !1,
+  startSeq = 0,
+  raf = 0,
+  lastTs = null,
+  acc = 0,
+  paused = !1,
+  recorder = null,
+  startStateHash = null,
+  controllerPause = null,
+  helpPause = null;
+
+function setStatus(e) {
   k(`setup-status`).textContent = e;
 }
-function Ha(e, t = !0) {
-  k(`game-message`).textContent = e;
-  ((k(`game-overlay`).hidden = !t), !G && j !== `preparing` && Ua());
+function overlay(e, show = !0) {
+  ((k(`game-message`).textContent = e), (k(`game-overlay`).hidden = !show), loading || phase === `preparing` || hideLoader());
 }
-function Ua() {
-  ((k(`disc-loader`).hidden = !0), (k(`cartridge-loader`).hidden = !0));
+function hideLoader() {
+  k(`cartridge-loader`).hidden = !0;
 }
-function Wa(e, t = null, n = ``) {
-  ((k(`cartridge-loader`).hidden = !0),
-    (k(`disc-loader`).hidden = !0),
-    (k(`game-overlay`).hidden = !1),
-    (k(`game-message`).textContent = n || e));
+function showMessage(e) {
+  ((k(`cartridge-loader`).hidden = !0), (k(`game-overlay`).hidden = !1), (k(`game-message`).textContent = e));
 }
-function Ga(e, t = 0, n = ``, r = !1) {
-  ((k(`cartridge-loader`).hidden = !0),
-    (k(`disc-loader`).hidden = !1),
-    (k(`game-overlay`).hidden = !0));
-  let i = k(`disc-loader-startup`);
-  (i.getAttribute(`src`) ||
-    i.setAttribute(
-      `src`,
-      `${globalThis.__BASE}game/segacd-startup.` +
-        (globalThis.matchMedia?.(`(prefers-reduced-motion: reduce)`).matches ? `png` : `gif`),
-    ),
-    k(`disc-loader`).classList.toggle(`is-boot`, r),
-    k(`disc-loader`).classList.toggle(`is-error`, e === `LOAD INTERRUPTED`),
-    (k(`disc-loader-stage`).textContent = e),
-    (k(`disc-loader-percent`).textContent = `${Math.round(Math.max(0, Math.min(1, t)) * 100)}%`),
-    (k(`disc-loader-progress`).value = t),
-    (k(`disc-loader-copy`).textContent = n));
-}
-function $a() {
-  return $i === `two` ? `two` : ea === 0 ? `single_home` : `single_away`;
-}
-var eo = (e) => (e === 0 ? `Home` : `Away`),
-  to = null,
-  no = ne(document, `${globalThis.__BASE}`);
-function ro(e = to) {
-  ((to = e), v(document, e, j));
-}
+
+// Refresh every piece of setup and status UI from the current state.
 function Z() {
   __syncRom();
-  let e = j !== `lobby` || K || G || J,
-    t = !e;
-  ((k(`match-type`).value = z.matchType),
-    (k(`match-type`).disabled = !t),
-    (k(`mercy-toggle`).checked = z.mercyEnabled),
-    (k(`mercy-toggle`).disabled = !t),
-    ro(j === `lobby` || j === `preparing` ? null : to));
-  let i = D(z.platform),
-    a = z.platform === `nhl95`,
-    o = `Your game`;
-  ((k(`game-select`).value = a ? `nhl95` : `nhl94`),
-    (k(`game-select`).disabled = !t),
-    k(`platform-select`).replaceChildren(
-      ...xe.filter((e) => (e === `nhl95`) === a).map((e) => new Option(ti[e].name, e)),
-    ),
-    (k(`platform-select`).value = z.platform),
-    (k(`platform-select`).disabled = !t),
-    (k(`platform-note`).textContent = i.note),
-    (k(`edition-platform`).textContent = i.tag),
-    k(`arena`).setAttribute(`data-platform`, z.platform),
-    k(`arena`).setAttribute(`data-game`, a ? `nhl95` : `nhl94`),
-    k(`game-canvas`).setAttribute(
-      `aria-label`,
-      `${o} gameplay. Keyboard and gamepad controls listed below.`,
-    ));
-  ((k(`team-a`).value = z.pair[0]),
-    (k(`team-b`).value = z.pair[1]),
-    (k(`home-choice`).value = z.homeTeam === z.pair[0] ? `a` : `b`));
-  for (let [e, t] of [...(k(`home-choice`).options || [])].entries())
-    t.textContent = hr.find((t) => t.id === z.pair[e]).name;
-  ((k(`team-a`).disabled = k(`team-b`).disabled = !t || !Ai),
-    (k(`home-choice`).disabled = !t),
-    (k(`start-match`).disabled = e || !P || !(!q || ka())),
-    (k(`start-match`).textContent = J
-      ? `CHECKING SAVE…`
-      : G
-        ? `LOADING GAME…`
-        : K
-          ? `STARTING…`
-          : j === `preparing`
-            ? `PREPARING GAME…`
-            : j === `finished`
-              ? `GAME ENDED`
-              : e
-                ? `GAME IN PROGRESS`
-                : `START GAME`),
-    k(`arena`).setAttribute(`data-phase`, j),
-    (k(`return-select`).disabled = j === `lobby` || j === `preparing` || ia),
-    (k(`return-select`).textContent = ia
-      ? `ENDING…`
-      : j === `finished`
-        ? `BACK TO SETUP`
-        : `END GAME`));
-  (Ma(),
-    (k(`pause-match`).disabled = j !== `playing`),
-    (k(`pause-match`).textContent = W ? `Resume` : `Pause`),
-    (k(`session-status`).textContent =
-      j === `playing`
-        ? W
-          ? `GAME PAUSED`
-          : `GAME RUNNING`
-        : j === `lineup`
-          ? `CHOOSE YOUR LINES`
-          : j === `preparing`
-            ? `PREPARING GAME`
-            : j === `finished`
-              ? `GAME ENDED`
-              : `NO GAME IN PROGRESS`),
-    k(`screen-wrap`).classList.toggle(`gameplay-view`, j === `playing`),
-    (k(`game-build-title`).textContent = P
-      ? `${o} is ready`
-      : Xi
-        ? `Game build unavailable`
-        : G
-          ? `${o} is loading`
+  let info = platformInfo(config.platform),
+    busy = phase !== `lobby` || starting || loading,
+    playing = phase === `playing`,
+    sel = k(`platform-select`);
+  (sel.options.length !== Object.keys(PLATFORMS).length &&
+    sel.replaceChildren(...Object.entries(PLATFORMS).map(([id, p]) => new Option(p.name, id))),
+    (sel.value = config.platform),
+    (sel.disabled = busy),
+    (k(`platform-note`).textContent = info.note),
+    k(`arena`).setAttribute(`data-platform`, config.platform),
+    k(`arena`).setAttribute(`data-phase`, phase),
+    (k(`start-match`).disabled = busy || !rom),
+    (k(`start-match`).textContent = loading
+      ? `LOADING GAME…`
+      : starting || phase === `preparing`
+        ? `STARTING…`
+        : playing
+          ? `GAME IN PROGRESS`
+          : `START GAME`),
+    (k(`return-select`).disabled = !playing),
+    (k(`pause-match`).disabled = !playing),
+    (k(`pause-match`).textContent = paused ? `Resume` : `Pause`),
+    (k(`session-status`).textContent = playing
+      ? paused
+        ? `GAME PAUSED`
+        : `GAME RUNNING`
+      : phase === `preparing`
+        ? `STARTING GAME`
+        : `NO GAME IN PROGRESS`),
+    k(`screen-wrap`).classList.toggle(`gameplay-view`, playing),
+    (k(`game-build-title`).textContent = rom
+      ? `Your game is ready`
+      : romError
+        ? `ROM could not be used`
+        : loading
+          ? `Your game is loading`
           : `ROM needed`),
-    (k(`game-build-state`).textContent = P ? `READY` : Xi ? `ERROR` : G ? `CHECKING` : `NEEDED`));
-  let l = P ? `READY TO START` : `CHOOSE ROM`,
-    u = P
-      ? `Ready. Start to boot the game; use its own menus to set up. Two keyboard layouts or controllers work on this computer.`
+    (k(`game-build-state`).textContent = rom ? `READY` : romError ? `ERROR` : loading ? `CHECKING` : `NEEDED`));
+  let state = rom ? `READY TO START` : `CHOOSE ROM`,
+    copy = rom
+      ? `Ready. Start boots the game from power-on. Two keyboard layouts or controllers work on this computer.`
       : `Choose your game ROM file from this computer in the Game ROM box above.`;
-  (Xi && ((l = `NEEDS ATTENTION`), (u = `That ROM could not be used. Choose a different ROM file.`)),
-    !Xi &&
-      j === `lobby` &&
-      (J
-        ? ((l = `CHECKING SAVE`), (u = `Checking your saved game. Wait here before choosing Start.`))
-        : G
-          ? ((l = `LOADING GAME`),
-            (u = `Wait for the selected game to finish loading. Your start button will unlock when it is ready.`))
-          : q &&
-            !ka() &&
-            ((l = `CHECK SAVE SETUP`),
-            (u = `Choose the save’s original home/away teams and player mode, or use Clear loaded state below the arena to start fresh.`))),
-    j === `preparing`
-      ? ((l = `PREPARING GAME`), (u = `Setting up the game. Keep this tab open.`))
-      : j === `lineup`
-        ? ((l = `CHOOSE YOUR LINES`),
-          (u = `Choose your lines in the original game menu, then press Start on your controller or keyboard.`))
-        : j === `playing`
-          ? ((l = W ? `GAME PAUSED` : `GAME RUNNING`),
-            (u = W
-              ? `Choose Resume below the game to continue.`
-              : `Game controls, save states and the RAM viewer are below the game.`))
-          : j === `finished` &&
-            ((l = `GAME ENDED`), (u = `Choose Back to setup below the game to play again.`)),
-    (k(`ready-check-title`).textContent =
-      j === `lobby` ? `Get ready` : j === `preparing` ? `Getting ready` : `Game status`),
-    (k(`ready-state`).textContent = l),
-    (k(`ready-copy`).textContent = u));
-  let f = $i === `single`;
-  for (let [t, n] of [
-    [`local-single`, f],
-    [`local-two`, !f],
-  ]) {
-    let r = k(t);
-    ((r.disabled = e),
-      r.setAttribute(`aria-pressed`, String(n)),
-      r.classList.toggle(`selected`, n));
-  }
-  ((k(`single-side`).hidden = !f),
+  (romError
+    ? ((state = `NEEDS ATTENTION`), (copy = `That ROM could not be used. Choose a different ROM file.`))
+    : loading &&
+      phase === `lobby` &&
+      ((state = `LOADING GAME`), (copy = `Wait for the game to finish loading. Start unlocks when it is ready.`)),
+    phase === `preparing`
+      ? ((state = `STARTING GAME`), (copy = `Starting the emulator. Keep this tab open.`))
+      : playing &&
+        ((state = paused ? `GAME PAUSED` : `GAME RUNNING`),
+        (copy = paused
+          ? `Choose Resume below the game to continue.`
+          : `Game controls, save states and the RAM viewer are below the game.`)),
+    (k(`ready-check-title`).textContent = phase === `lobby` ? `Get ready` : `Game status`),
+    (k(`ready-state`).textContent = state),
+    (k(`ready-copy`).textContent = copy),
     __rp ||
-      (k(`connection-status`).textContent =
-        j === `lobby` ? `No game running` : `Local game · both controller ports on this computer`));
-  for (let t of [0, 1]) {
-    let n = k(`human-side-${t}`),
-      r = ea === t;
-    ((n.disabled = e),
-      n.setAttribute(`aria-pressed`, String(r)),
-      n.classList.toggle(`selected`, r));
-  }
-  k(`screen-tag`).textContent = i.tag;
+      (k(`connection-status`).textContent = playing
+        ? `Game running · both controller ports on this computer`
+        : `No game running`),
+    (k(`screen-tag`).textContent = info.tag));
 }
-function io(e, t, n = z.hostSlot, r = z.platform, i = z) {
-  if (j !== `lobby`) throw Error(`Team settings are locked during a match.`);
-  ((z = ci(e, t, z.delay, n, r, i)),
-    q &&
-      (q.platform !== r || q.homeTeam !== z.homeTeam || q.awayTeam !== z.awayTeam) &&
-      (q = null),
-    Z());
-}
-function so(e, t, n) {
-  if (ta)
+
+function pushInput(frame, p1, p2) {
+  if (recorder)
     try {
-      ta.push(e, t, n);
+      recorder.push(frame, p1, p2);
     } catch (e) {
-      (console.error(`Recording stopped`, e), (ta = null));
+      (console.error(`Recording stopped`, e), (recorder = null));
     }
 }
-function co() {
-  let t = ta;
-  if (((ta = null), !t)) return;
-  try {
-    (t.finish(ra || `ended`, null),
-      (__lastSegs = [...__segs, t.export(null, 1)].filter(Boolean)),
-      (__segs = []));
-  } catch (e) {
-    console.error(`Match recording failed`, e);
-  }
+function finishRecording() {
+  let r = recorder;
+  if (((recorder = null), r))
+    try {
+      ((__lastSegs = [...__segs, r.export(1)].filter(Boolean)), (__segs = []));
+    } catch (e) {
+      console.error(`Recording failed`, e);
+    }
 }
-function lo() {
-  (Ia(ra || `left`),
-    co(),
+function resetToLobby() {
+  (finishRecording(),
     (__rp = null),
-    (ra = null),
-    (Ea = null),
-    Oa++,
-    (J = !1),
-    U++,
-    cancelAnimationFrame(Fi),
-    (Fi = 0),
-    A.suspend(),
-    F?.dispose(),
-    (F = null),
-    G || Ua(),
-    (j = `lobby`),
-    (W = !1),
-    (Bi = 0),
-    (H = null),
-    bi.held.clear(),
-    Qi++,
-    (K = !1),
-    (ia = !1));
+    generation++,
+    cancelAnimationFrame(raf),
+    (raf = 0),
+    audio.suspend(),
+    emu?.dispose(),
+    (emu = null),
+    loading || hideLoader(),
+    (phase = `lobby`),
+    (paused = !1),
+    (runId = null),
+    keys.held.clear(),
+    startSeq++,
+    (starting = !1));
 }
-function uo() {
-  return { frame: F?.frames || 0, homeScore: 0, awayScore: 0 };
-}
-function fo(e, t = `ended`) {
-  [`lineup`, `playing`, `finished`].includes(j) &&
-    H &&
-    j !== `finished` &&
-    (Ia(t),
-    (ia = !1),
-    (ra ||= t),
-    (j = `finished`),
-    (W = !1),
-    U++,
-    cancelAnimationFrame(Fi),
-    (Fi = 0),
-    A.suspend(),
-    bi.held.clear(),
-    ta?.setScore(e.frame, e.homeScore, e.awayScore, t === `mercy` ? `complete` : `ended`),
-    co(),
-    to && ro({ ...to, homeScore: e.homeScore, awayScore: e.awayScore }),
-    mo(!1),
+function endGame() {
+  phase === `playing` &&
+    (resetToLobby(),
+    overlay(`Game ended. Start another when ready.`),
+    setStatus(`Game ended. Start another when ready.`),
     Z());
 }
-function mo() {
-  j === `finished` &&
-    (lo(),
-    Ha(`Game ended. Start another when ready.`),
-    Y(`Game ended. Start another when ready.`),
-    Z());
+function fail(e) {
+  console.error(e);
+  let msg = e?.message || `The game stopped because of an error.`;
+  (resetToLobby(), setStatus(msg), overlay(msg), Z());
 }
-function ho(e) {
-  (lo(), Y(e), Ha(e), Z());
-}
-function Q(e) {
-  (console.error(e), ho(e?.message || `The game stopped because of an error.`));
-}
-function $(e) {
-  return (...t) =>
+function guard(fn) {
+  return (...a) =>
     Promise.resolve()
-      .then(() => e(...t))
-      .catch(Q);
+      .then(() => fn(...a))
+      .catch(fail);
 }
-async function go() {
-  return (
-    (Wi ||= (async () => {
-      let e = D(z.platform);
-      [Vi, Hi] = await Promise.all([
-        yi(() => import(`${globalThis.__BASE}game/` + e.emu), []),
-        yi(() => import(`${globalThis.__BASE}game/` + e.boot), []),
-      ]);
-      let t = await Promise.all(
-        e.files
-          .map((e) => `game/` + e)
-          .map(async (e) => {
-            let t = await fetch(`${globalThis.__BASE}` + e);
-            if (!t.ok) throw Error(`Missing emulator file: ${e}`);
-            return new Uint8Array(await t.arrayBuffer());
-          }),
-      );
-      Ui = await li({ version: Vi.CORE_VERSION, files: await Promise.all(t.map(li)) });
-    })()),
-    Wi
-  );
+
+// Load the emulator module for the selected system and fingerprint its core build.
+async function loadCore() {
+  return (coreLoad ||= (async () => {
+    let info = platformInfo(config.platform);
+    emuModule = await import(`${BASE}game/` + info.emu);
+    let files = await Promise.all(
+      info.core.map(async (f) => {
+        let r = await fetch(`${BASE}game/` + f);
+        if (!r.ok) throw Error(`Missing emulator file: game/${f}`);
+        return sha256Hex(new Uint8Array(await r.arrayBuffer()));
+      }),
+    );
+    coreHash = await sha256Hex({ version: emuModule.CORE_VERSION, files });
+  })());
 }
-async function _o(e) {
-  let t = ++Yi;
+function coreHashes() {
+  return [coreHash, ...platformInfo(config.platform).legacyCoreHashes].filter(Boolean);
+}
+async function checkRom(bytes) {
+  let seq = ++romSeq;
   if (
-    ((P = null),
-    (Si = null),
-    (Xi = null),
+    ((rom = null),
+    (romSha = null),
+    (romError = null),
     Z(),
     (k(`rom-status`).textContent = `Checking your ROM file…`),
-    e.byteLength < 16384 || e.byteLength > 8388608)
+    bytes.byteLength < 16384 || bytes.byteLength > 8388608)
   )
     throw Error(`That file does not look like a game ROM.`);
-  await go();
-  let n = await Vi.sha256Hex(Vi.normalizeROM ? Vi.normalizeROM(e) : e);
-  if (t === Yi) {
-    ((P = e),
-      (Si = n),
-      (k(`rom-status`).textContent =
-        `ROM loaded (${(e.byteLength / 1048576).toFixed(2)} MB). It stays on this computer.`),
-      Y(`Game ready. Choose Start to boot it.`),
-      Z());
-  }
+  await loadCore();
+  let sha = await emuModule.sha256Hex(emuModule.normalizeROM ? emuModule.normalizeROM(bytes) : bytes);
+  seq === romSeq &&
+    ((rom = bytes),
+    (romSha = sha),
+    (k(`rom-status`).textContent = `ROM loaded (${(bytes.byteLength / 1048576).toFixed(2)} MB). It stays on this computer.`),
+    setStatus(`Game ready. Choose Start to boot it.`),
+    Z());
 }
-async function vo() {
-  let e = z.platform,
-    t = D(e),
-    n = `${globalThis.__BASE}game/` + t.media;
+// Show the ROM already chosen for this system (each system keeps its own until reload).
+async function showRomForPlatform() {
+  let p = config.platform,
+    bytes = __roms.get(p);
+  if (!bytes) {
+    ((k(`rom-status`).textContent = `Pick the ROM file for this game from your computer. It never leaves your device, and any ROM is accepted.`),
+      hideLoader(),
+      overlay(`Choose your ROM file to begin.`));
+    return;
+  }
   try {
-    let r;
-    if (z.platform === `segacd`) {
-      Ga(`CHECKING DISC`, 0, `Checking your saved disc and tester access.`);
-      let e = go();
-      (e.catch(() => {}),
-        (r = await fr(n, t.bytes, {
-          expectedHash: t.mediaHash,
-          onProgress: (e, t) => {
-            let n = Math.round((t?.cachedBytes || 0) / 1048576),
-              r = Math.round((t?.downloadedBytes || 0) / 1048576),
-              i =
-                t?.phase === `verifying`
-                  ? `VERIFYING DISC`
-                  : t?.downloadedBytes
-                    ? `DOWNLOADING DISC`
-                    : t?.cachedBytes
-                      ? `READING SAVED DISC`
-                      : `CHECKING DISC`,
-              a =
-                t?.phase === `verifying`
-                  ? `Checking the complete disc before play.`
-                  : t?.downloadedBytes
-                    ? `${r} MB downloaded · ${n} MB from this device. ${t.cacheAvailable ? `Saved chunks resume next time.` : `Device storage unavailable; this visit can still play.`}`
-                    : t?.cachedBytes
-                      ? `Your saved disc is loading. No disc download needed for these chunks.`
-                      : `First visit: saving the 227 MB disc for faster return visits.`;
-            ((k(`rom-status`).textContent = `${i} · ${Math.round(e * 100)}%`), Ga(i, e, a));
-          },
-        })),
-        await e,
-        Ga(`PREPARING GAME`, 1, `Disc loaded. Checking the game and BIOS.`));
-    } else {
-      if (((r = __roms.get(e)), !r)) {
-        ((k(`rom-status`).textContent =
-          `Pick the ROM file for this game from your computer. It never leaves your device, and any ROM is accepted.`),
-          Ua(),
-          Ha(`Choose your ROM file to begin.`));
-        return;
-      }
-      Wa(`CHECKING GAME`, null, `Checking your game…`);
-    }
-    if (t.bios) {
-      let e = await fetch(`${globalThis.__BASE}game/` + t.bios, { credentials: `same-origin` });
-      if (!e.ok) throw Error(`The Sega CD BIOS could not be loaded.`);
-      ((Ci = new Uint8Array(await e.arrayBuffer())), (wi = await li(Ci)));
-    }
-    if ((await _o(r), z.platform !== e || !P)) return;
-    (z.platform === `segacd` ? (Ua(), Ha(`Game ready. Choose your matchup and start.`)) : Ua(),
-      Ha(`Your ROM is ready. Choose Start to play.`));
+    (showMessage(`Checking your game…`), await checkRom(bytes));
+    if (config.platform !== p || !rom) return;
+    (hideLoader(), overlay(`Your ROM is ready. Choose Start to play.`));
   } catch (e) {
-    throw (
-      z.platform === `segacd`
-        ? Ga(`LOAD INTERRUPTED`, 0, `${e.message} Reload to resume saved chunks.`)
-        : Wa(`LOAD INTERRUPTED`, null, e.message + ` Reload to try again.`),
-      e
-    );
+    throw (showMessage(e.message + ` Reload to try again.`), e);
   }
 }
-async function yo(e) {
-  let t = ka();
-  Ea = null;
-  let n = ++U;
-  ((j = `preparing`), (H = e), Z());
+
+async function startGame() {
+  if (phase !== `lobby` || starting) return;
+  let seq = ++startSeq;
+  ((starting = !0), Z());
   try {
-    if (
-      (Ha(`Starting your game…`),
-      z.platform === `segacd`
-        ? Ga(`STARTING SEGA CD`, 0, `Starting NHL ’94 and applying your matchup.`)
-        : Wa(`SETTING UP YOUR MATCH`, 0, `Starting your game…`),
-      await go(),
-      n !== U)
-    )
-      return !1;
-    let r = await (Vi.Genesis || Vi.SNES || Vi.SegaCD).create(P, {
-      biosBytes: Ci,
-      locateFile: (e) => (e.endsWith(`.wasm`) ? `${globalThis.__BASE}game/core/` + e : e),
+    if ((await audio.unlock(), seq !== startSeq || phase !== `lobby`)) return;
+    if (!rom || loading) throw Error(`The game ROM is not loaded yet.`);
+    let gen = ++generation;
+    ((phase = `preparing`), (runId = crypto.randomUUID()), Z(), showMessage(`Starting your game…`));
+    if ((await loadCore(), gen !== generation)) return;
+    let e = await (emuModule.Genesis || emuModule.SNES).create(rom, {
+      locateFile: (f) => (f.endsWith(`.wasm`) ? `${BASE}game/core/` + f : f),
     });
-    if (n !== U) return (r.dispose(), !1);
-    F = r;
-    let i;
-    if (
-      (t
-        ? (ge(F, t.bytes, () => Hi.verifyMatchSettings(F, ai[z.homeTeam], ai[z.awayTeam], $a())),
-          (Ea = t),
-          (i = { settingsVerified: !0 }))
-        : (i = {}),
-      n !== U || ((na = await li(F.save().bytes)), n !== U))
-    )
-      return !1;
-    ((ta = new Kr({
-        matchId: e,
-        side: `local`,
-        mode: `local`,
-        started: null,
-        config: {
-          ...structuredClone(z),
-          players: $a(),
-          ...(t ? { resume: { stateHash: t.hash, source: `browser-load` } } : {}),
-        },
-        romSha256: Si,
-        coreHash: Ui,
-        startStateHash: na,
-        romCrc: __myRom()?.crc,
-        romName: __romNames.get(z.platform) || ``,
-      })),
+    if (gen !== generation) return e.dispose();
+    emu = e;
+    if (((startStateHash = await sha256Hex(emu.save().bytes)), gen !== generation)) return;
+    ((recorder = new Recorder({
+      config: structuredClone(config),
+      romSha256: romSha,
+      coreHash,
+      startStateHash,
+      romCrc: __myRom()?.crc,
+      romName: __romNames.get(config.platform) || ``,
+    })),
       (__segs = []),
       await __rpApply(),
-      Y(`Starting your game from power-on.`));
-    return !0;
-  } catch (e) {
-    if (n !== U) return !1;
-    throw e;
-  }
-}
-async function So() {
-  if (j !== `lobby` || K || J) return;
-  let e = ++Qi,
-    t = O(z);
-  ((K = !0), Z());
-  try {
-    if ((await A.unlock(), e !== Qi || j !== `lobby`)) return;
-    if (t !== O(z)) {
-      Y(`The matchup changed. Please review and lock in again.`);
-      return;
-    }
-    if (q && !ka()) {
-      Y(
-        `Choose this save’s original teams and player mode, or clear the loaded state to start fresh.`,
-      );
-      return;
-    }
-    if (!P || G) throw Error(`The game ROM is not loaded yet.`);
-    (await yo(crypto.randomUUID())) && Co();
-  } finally {
-    e === Qi && ((K = !1), Z());
-  }
-}
-function Co() {
-  (wo(`playing`),
-    Y(`Your game is running. Use the game’s own menus to choose teams, players and rules.`));
-}
-function wo(e) {
-  if (j === `preparing` && F) {
-    if (
-      (Ea && (q = null),
-      no.clear(),
-      (to = null),
-      (j = e),
-      (W = !1),
-      (Bi = 0),
-      (Ii = null),
-      (Li = 0),
-      k(`controller-dialog`).open && Bo(),
-      k(`help-dialog`).open && Ho(),
-      Ua(),
-      ta && (ta.meta.started = new Date().toISOString()),
-      Ha(``, !1),
+      (phase = `playing`),
+      (paused = !1),
+      (lastTs = null),
+      (acc = 0),
+      k(`controller-dialog`).open && onControllerOpen(),
+      k(`help-dialog`).open && onHelpOpen(),
+      hideLoader(),
+      overlay(``, !1),
       !k(`controller-dialog`).open && !k(`help-dialog`).open && k(`game-canvas`).focus(),
-      j === `lineup`)
-    ) {
-      let e = D(z.platform).gameName || `NHL ’94`,
-        t = $i === `single`;
-      Y(
-        z.platform === `nhl95`
-          ? `NHL ’95 menu: press C on Edit Lines to change your lineup, then START when ready.${t ? ` The CPU picks its own.` : ` Both players can edit their lines.`}`
-          : t
-            ? `Choose your lines in the ${e} menu, then press START when you are ready. The CPU picks its own.`
-            : `Choose your lines in the ${e} menu. Both players press START when ready.`,
-      );
-    }
-    (Ea &&
-      Y(
-        `Saved game resumed. Scores, clock and in-game pause are restored; press Start in the game if it was paused.`,
-      ),
+      setStatus(`Your game is running.`),
       Z(),
-      (Fi = requestAnimationFrame(Oo)));
+      (raf = requestAnimationFrame(frameLoop)));
+  } finally {
+    seq === startSeq && ((starting = !1), Z());
   }
 }
-function To() {
-  let e = F.video();
-  if (!e) return;
-  let t = k(`game-canvas`);
-  (k(`screen-wrap`).classList.toggle(`wide-game-screen`, e.width === 320),
-    (t.width !== e.width || t.height !== e.height) && ((t.width = e.width), (t.height = e.height)),
-    t.getContext(`2d`, { alpha: !1 }).putImageData(new ImageData(e.data, e.width, e.height), 0, 0));
+function drawFrame() {
+  let v = emu.video();
+  if (!v) return;
+  let c = k(`game-canvas`);
+  (k(`screen-wrap`).classList.toggle(`wide-game-screen`, v.width === 320),
+    (c.width !== v.width || c.height !== v.height) && ((c.width = v.width), (c.height = v.height)),
+    c.getContext(`2d`, { alpha: !1 }).putImageData(new ImageData(v.data, v.width, v.height), 0, 0));
 }
-function Oo(e) {
-  if ([`lineup`, `playing`].includes(j)) {
+// Fixed-step loop: run whole emulator frames for the time that has passed (at most 5 per tick).
+function frameLoop(ts) {
+  if (phase === `playing`)
     try {
-      if (!Number.isFinite(e)) {
-        ((Ii = null), (Fi = requestAnimationFrame(Oo)));
+      if (!Number.isFinite(ts)) {
+        ((lastTs = null), (raf = requestAnimationFrame(frameLoop)));
         return;
       }
-      let t = Ii === null ? 0 : Math.max(0, e - Ii);
-      if (((Ii = e), !W)) {
-        let e = 1e3 / (F.fps ?? 59.922743);
-        Li = Math.min(Li + t, e * 5);
-        let n = 0;
-        for (; Li >= e && n++ < 5;) {
-          let t = D(z.platform).mask,
-            n = (bi.mask(0) | (Bi > 0 ? 8 : 0)) & t,
-            r;
+      let dt = lastTs === null ? 0 : Math.max(0, ts - lastTs);
+      if (((lastTs = ts), !paused)) {
+        let step = 1e3 / (emu.fps ?? 59.922743),
+          mask = platformInfo(config.platform).mask;
+        acc = Math.min(acc + dt, step * 5);
+        for (let n = 0; acc >= step && n++ < 5; ) {
+          let ran;
           if (__rp) {
-            if (__rp.i >= __rp.n) (__rpDone(), (r = !1));
-            else {
-              (__rp.loads[__rp.i] && F.load(__rp.loads[__rp.i]),
-                F.step(__rp.p1[__rp.i], __rp.p2[__rp.i]),
+            if (__rp.i >= __rp.n) (__rpDone(), (ran = !1));
+            else
+              (__rp.loads[__rp.i] && emu.load(__rp.loads[__rp.i]),
+                emu.step(__rp.p1[__rp.i], __rp.p2[__rp.i]),
                 __rp.i++,
-                __rp.i % 120 === 0 && (__rp.hashes[__rp.i] = F.checksum() >>> 0),
-                __rp.i % 30 === 0 &&
-                  (k(`connection-status`).textContent = `Replay · frame ${__rp.i} of ${__rp.n}`),
-                (r = !0));
-            }
+                __rp.i % 120 === 0 && (__rp.hashes[__rp.i] = emu.checksum() >>> 0),
+                __rp.i % 30 === 0 && (k(`connection-status`).textContent = `Replay · frame ${__rp.i} of ${__rp.n}`),
+                (ran = !0));
           } else {
-            let e = $i === `single` ? 0 : bi.mask(1) & t;
-            (F.step(n, e), so(ta?.frames, n, e), (r = !0));
+            let p1 = keys.mask(0) & mask,
+              p2 = keys.mask(1) & mask;
+            (emu.step(p1, p2), pushInput(recorder?.frames, p1, p2), (ran = !0));
           }
-          if (!r) {
-            Li = 0;
+          if (!ran) {
+            acc = 0;
             break;
           }
-          (Bi > 0 && Bi--, A.push(F.audio(), F.audioRate), (Li -= e));
+          (audio.push(emu.audio(), emu.audioRate), (acc -= step));
         }
-        To();
+        drawFrame();
       }
-      Fi = requestAnimationFrame(Oo);
+      raf = requestAnimationFrame(frameLoop);
     } catch (e) {
-      Q(e);
+      fail(e);
     }
-  }
 }
-function Fo() {}
-Fo();
-for (let e of [`team-a`, `team-b`])
-  (k(e).replaceChildren(...hr.map((e) => new Option(e.name, e.id))),
-    k(e).addEventListener(
-      `change`,
-      $(() => {
-        if (z.platform === `nhl95` || !Ai) return;
-        let e = [k(`team-a`).value, k(`team-b`).value];
-        try {
-          ci(e, e[0]);
-        } catch (e) {
-          (Y(e.message), Z());
-          return;
-        }
-        io(e, e.includes(z.homeTeam) ? z.homeTeam : e[0]);
-      }),
-    ));
-for (let e of [`match-type`, `mercy-toggle`])
-  k(e).addEventListener(`change`, () => {
-    if (j !== `lobby` || K || G || J) {
-      Z();
-      return;
-    }
-    let t = e === `match-type` ? k(`match-type`).value : z.matchType,
-      n = e === `match-type` ? t === `tournament` : k(`mercy-toggle`).checked;
-    try {
-      io(z.pair, z.homeTeam, z.hostSlot, z.platform, { matchType: t, mercyEnabled: n });
-    } catch (e) {
-      (Y(e.message), Z());
-    }
-  });
-var Io = !1;
-for (let e of [`scanlines-toggle`, `scanlines-in-game`])
-  k(e).addEventListener(`click`, () => {
-    ((Io = !Io), (k(`scanline-overlay`).hidden = !Io));
-    for (let e of [`scanlines-toggle`, `scanlines-in-game`])
-      (k(e).setAttribute(`aria-pressed`, String(Io)),
-        (k(e).textContent = `Scanlines: ${Io ? `on` : `off`}`));
-  });
-k(`home-choice`).addEventListener(
-  `change`,
-  $(() => {
-    z.platform !== `nhl95` && io(z.pair, z.pair[k(`home-choice`).value === `a` ? 0 : 1]);
-  }),
-);
-async function Ro(e) {
-  if ((await Zi.catch(() => {}), j !== `lobby` || K || G)) return;
-  if ((D(e), !Se(e))) throw Error(`Choose Genesis or SNES.`);
-  ((G = !0),
-    (q = null),
-    Oa++,
-    (J = !1),
-    Ua(),
-    Yi++,
-    (P = null),
-    (Si = null),
-    (Ci = null),
-    (wi = null),
-    (Xi = null),
-    (Vi = Hi = Ui = Wi = null));
-  let r = e === `nhl95` ? [z.homeTeam, z.awayTeam] : z.pair;
-  ((z = ci([...r], r.includes(z.homeTeam) ? z.homeTeam : r[0], z.delay, z.hostSlot, e, z)),
-    bi.held.clear(),
-    Fo(),
+
+async function switchPlatform(p) {
+  if ((await platformChange.catch(() => {}), phase !== `lobby` || starting || loading)) return;
+  (platformInfo(p),
+    (loading = !0),
+    hideLoader(),
+    romSeq++,
+    (rom = null),
+    (romSha = null),
+    (romError = null),
+    (emuModule = coreHash = coreLoad = null),
+    (config = { ...config, platform: p }),
+    keys.held.clear(),
     Z());
   try {
-    ((Zi = vo()), await Zi);
+    ((platformChange = showRomForPlatform()), await platformChange);
   } catch (e) {
-    ((Xi = e.message), (k(`rom-status`).textContent = Xi));
+    ((romError = e.message), (k(`rom-status`).textContent = romError));
   } finally {
-    ((G = !1), Z());
+    ((loading = !1), Z());
   }
-  return !0;
 }
-(k(`platform-select`).addEventListener(
+
+var scanlines = !1;
+for (let id of [`scanlines-toggle`, `scanlines-in-game`])
+  k(id).addEventListener(`click`, () => {
+    ((scanlines = !scanlines), (k(`scanline-overlay`).hidden = !scanlines));
+    for (let b of [`scanlines-toggle`, `scanlines-in-game`])
+      (k(b).setAttribute(`aria-pressed`, String(scanlines)), (k(b).textContent = `Scanlines: ${scanlines ? `on` : `off`}`));
+  });
+k(`platform-select`).addEventListener(
   `change`,
-  $(() => Ro(k(`platform-select`).value)),
-),
-  k(`game-select`).addEventListener(
-    `change`,
-    $(() => Ro(k(`game-select`).value === `nhl95` ? `nhl95` : `genesis`)),
-  ),
-  k(`load-state`).addEventListener(`click`, () => {
-    ((k(`state-recovery`).open = !0), k(`load-state-file`).click());
-  }),
-  k(`load-state-file`).addEventListener(`change`, Pa),
-  k(`recover-last-state`).addEventListener(`click`, async () => {
-    let e = Sa.get(z.platform);
-    if (e)
-      try {
-        await Na({ native: e.native, metadata: e.metadata });
-      } catch (e) {
-        Y(`Could not recover state: ` + e.message);
-      }
-  }),
-  k(`clear-loaded-state`).addEventListener(`click`, () => {
-    j !== `lobby` ||
-      K ||
-      J ||
-      ((q = null), Z(), Y(`Loaded state cleared. New games start from power-on.`));
-  }));
-for (let [e, t] of [
-  [`local-single`, `single`],
-  [`local-two`, `two`],
-])
-  k(e).addEventListener(`click`, () => {
-    j !== `lobby` ||
-      K ||
-      (($i = t),
-      Y(
-        t === `single`
-          ? `Single player: you against the game’s CPU.`
-          : `Two players on this computer: player one uses the arrow keys, player two uses I J K L.`,
-      ),
+  guard(() => switchPlatform(k(`platform-select`).value)),
+);
+k(`start-match`).addEventListener(`click`, guard(startGame));
+k(`return-select`).addEventListener(`click`, guard(endGame));
+k(`pause-match`).addEventListener(
+  `click`,
+  guard(async () => {
+    phase === `playing` &&
+      ((paused = !paused),
+      keys.held.clear(),
+      paused ? (audio.suspend(), overlay(`Game paused.`)) : (await audio.unlock(), overlay(``, !1), (lastTs = null), (acc = 0)),
       Z());
-  });
-for (let e of [0, 1])
-  k(`human-side-${e}`).addEventListener(`click`, () => {
-    j !== `lobby` || K || ((ea = e), Y(`You play ${eo(e)}.`), Z());
-  });
-(k(`start-match`).addEventListener(`click`, $(So)),
-  k(`return-select`).addEventListener(
-    `click`,
-    $(() => {
-      if (j === `finished`) {
-        mo();
-        return;
-      }
-      [`lineup`, `playing`].includes(j) && fo(uo());
-    }),
-  ));
-(  k(`pause-match`).addEventListener(
-    `click`,
-    $(async () => {
-      j === `playing` &&
-        ((W = !W),
-        bi.held.clear(),
-        W
-          ? (A.suspend(), Ha(`Game paused.`))
-          : (await A.unlock(), Ha(``, !1), (Ii = null), (Li = 0)),
-        Z());
-    }),
-  ));
-function Bo() {
-  (bi.held.clear(),
-    (Bi = 0),
-    [`lineup`, `playing`].includes(j) &&
-      !ga &&
-      ((ga = { generation: U, matchId: H, wasPaused: W }), (W = !0), A.suspend()),
-    (k(`controller-session-note`).textContent = ga
+  }),
+);
+// The controller and help dialogs pause the game while they are open.
+function onControllerOpen() {
+  (keys.held.clear(),
+    phase === `playing` &&
+      !controllerPause &&
+      ((controllerPause = { generation, runId, wasPaused: paused }), (paused = !0), audio.suspend()),
+    (k(`controller-session-note`).textContent = controllerPause
       ? `Your game is paused while you map. Close this panel to return.`
       : `Change buttons here at any time. No restart needed.`));
 }
-function Vo() {
-  (bi.held.clear(),
-    (Ii = null),
-    (Li = 0),
-    ga && ga.generation === U && ga.matchId === H && ((W = ga.wasPaused), W || A.unlock()),
-    (ga = null),
-    [`lineup`, `playing`].includes(j) && k(`game-canvas`).focus(),
+function onControllerClose() {
+  (keys.held.clear(),
+    (lastTs = null),
+    (acc = 0),
+    controllerPause &&
+      controllerPause.generation === generation &&
+      controllerPause.runId === runId &&
+      ((paused = controllerPause.wasPaused), paused || audio.unlock()),
+    (controllerPause = null),
+    phase === `playing` && k(`game-canvas`).focus(),
     Z());
 }
-(document.addEventListener(`king94-controller-open`, Bo),
-  document.addEventListener(`king94-controller-close`, Vo));
-function Ho() {
-  (bi.held.clear(),
-    (Bi = 0),
-    [`lineup`, `playing`].includes(j) &&
-      !_a &&
-      ((_a = { generation: U, matchId: H, wasPaused: W }), (W = !0), A.suspend()),
-    (k(`help-session-note`).textContent = _a
+function onHelpOpen() {
+  (keys.held.clear(),
+    phase === `playing` &&
+      !helpPause &&
+      ((helpPause = { generation, runId, wasPaused: paused }), (paused = !0), audio.suspend()),
+    (k(`help-session-note`).textContent = helpPause
       ? `Your game is paused while Help is open. Choose Done to return.`
       : `Choose a topic below. You can return to Help at any time.`));
 }
-function Uo() {
-  (bi.held.clear(),
-    (Ii = null),
-    (Li = 0),
-    _a && _a.generation === U && _a.matchId === H && ((W = _a.wasPaused), W || A.unlock()),
-    (_a = null),
+function onHelpClose() {
+  (keys.held.clear(),
+    (lastTs = null),
+    (acc = 0),
+    helpPause &&
+      helpPause.generation === generation &&
+      helpPause.runId === runId &&
+      ((paused = helpPause.wasPaused), paused || audio.unlock()),
+    (helpPause = null),
     Z());
 }
-(document.addEventListener(`king94-help-open`, Ho),
-  document.addEventListener(`king94-help-close`, Uo),
-  k(`enable-sound`).addEventListener(`click`, async () => {
-    let e = k(`enable-sound`);
-    e.disabled = !0;
-    let t = await A.unlock();
-    ((e.textContent = t ? `Sound enabled` : `Retry sound`),
-      (e.disabled = !1),
-      Y(
-        t
-          ? `Game sound is enabled.`
-          : `Sound is unavailable right now. The game can still run; try enabling sound again.`,
-      ),
-      W && A.suspend());
-  }),
+(document.addEventListener(`king94-controller-open`, onControllerOpen),
+  document.addEventListener(`king94-controller-close`, onControllerClose),
+  document.addEventListener(`king94-help-open`, onHelpOpen),
+  document.addEventListener(`king94-help-close`, onHelpClose),
   document.addEventListener(`visibilitychange`, () => {
-    document.hidden && [`lineup`, `playing`].includes(j) && !W && k(`pause-match`).click();
+    document.hidden && phase === `playing` && !paused && k(`pause-match`).click();
   }),
   document.addEventListener(`click`, (e) => {
-    [`lineup`, `playing`].includes(j) &&
+    phase === `playing` &&
       !k(`controller-dialog`).open &&
       !e.target.closest?.(`.arena-tools,button,a,input,select,textarea,summary`) &&
       k(`game-canvas`).focus();
-  }));
-(Z(),
-  document.documentElement?.setAttribute(`data-arena-ready`, `true`),
-  addEventListener(`pagehide`, () => {
-    ta && ((ra ||= `page-closed`), co());
   }),
-  (G = !0),
-  (Zi = vo()
-    .catch((e) => {
-      ((Xi = e?.message || `The ROM could not be loaded.`),
-        (k(`rom-status`).textContent = Xi),
-        Y(Xi));
-    })
-    .finally(() => {
-      ((G = !1), Z());
-    })));
+  addEventListener(`pagehide`, finishRecording));
+
 async function __loadRom(bytes) {
-  if (G || j !== `lobby`) return;
-  let plat = z.platform,
-    t = D(plat);
-  ((G = !0), (Xi = null), Z());
+  if (loading || phase !== `lobby`) return;
+  let p = config.platform;
+  ((loading = !0), (romError = null), Z());
   try {
-    (__roms.set(plat, bytes),
-      Wa(`CHECKING GAME`, null, `Checking your game before the puck drops.`),
-      await _o(bytes));
-    if (z.platform !== plat || !P) return;
-    (Ua(), Ha(`Your ROM is ready. Choose Start to play.`));
+    if ((__roms.set(p, bytes), showMessage(`Checking your game…`), await checkRom(bytes), config.platform !== p || !rom)) return;
+    (hideLoader(), overlay(`Your ROM is ready. Choose Start to play.`));
   } catch (e) {
-    (__roms.delete(plat),
-      (P = null),
-      (Si = null),
-      (Xi = e?.message || `The ROM could not be loaded.`),
-      (k(`rom-status`).textContent = Xi),
-      Wa(`LOAD INTERRUPTED`, null, Xi + ` Choose a different ROM file.`),
-      Y(Xi));
+    (__roms.delete(p),
+      (rom = null),
+      (romSha = null),
+      (romError = e?.message || `The ROM could not be loaded.`),
+      (k(`rom-status`).textContent = romError),
+      showMessage(romError + ` Choose a different ROM file.`),
+      setStatus(romError));
   } finally {
-    ((G = !1), Z());
+    ((loading = !1), Z());
   }
 }
 k(`rom-file`).addEventListener(`change`, async (e) => {
   let f = e.target.files[0];
-  if (!f) return;
-  try {
-    if (f.size > 8388608) throw Error(`That file does not look like a game ROM.`);
-    (__romNames.set(z.platform, f.name), await __loadRom(new Uint8Array(await f.arrayBuffer())));
-  } catch (err) {
-    ((Xi = err.message), (k(`rom-status`).textContent = Xi), Y(Xi), Z());
+  if (f) {
+    try {
+      if (f.size > 8388608) throw Error(`That file does not look like a game ROM.`);
+      (__romNames.set(config.platform, f.name), await __loadRom(new Uint8Array(await f.arrayBuffer())));
+    } catch (err) {
+      ((romError = err.message), (k(`rom-status`).textContent = romError), setStatus(romError), Z());
+    }
+    e.target.value = ``;
   }
-  e.target.value = ``;
 });
+// Browsers only start audio after a click or key press.
 for (let ev of [`pointerdown`, `keydown`]) {
   let h = async () => {
     try {
-      (await A.unlock()) &&
-        (removeEventListener(`pointerdown`, h, !0), removeEventListener(`keydown`, h, !0));
+      (await audio.unlock()) && (removeEventListener(`pointerdown`, h, !0), removeEventListener(`keydown`, h, !0));
     } catch {}
   };
   addEventListener(ev, h, !0);
 }
+
+// Hooks for the other scripts (save states, RAM viewer, emulator control).
 globalThis.__arena = Object.freeze({
   get emu() {
-    return F;
+    return emu;
   },
   get phase() {
-    return j;
+    return phase;
   },
   get platform() {
-    return z.platform;
-  },
-  get home() {
-    return z.homeTeam;
-  },
-  get away() {
-    return z.awayTeam;
-  },
-  get players() {
-    return $a();
+    return config.platform;
   },
   get coreVersion() {
-    return Vi?.CORE_VERSION;
+    return emuModule?.CORE_VERSION;
   },
   get coreHash() {
-    return Ui;
+    return coreHash;
+  },
+  get coreHashes() {
+    return coreHashes();
   },
   status(e) {
-    Y(e);
+    setStatus(e);
   },
   loadRom: __loadRom,
   get romName() {
-    return __romNames.get(z.platform) || ``;
+    return __romNames.get(config.platform) || ``;
   },
   snapshot() {
-    return F.save();
-  },
-  verify(e) {
-    if (!Hi?.verifyMatchSettings) throw Error(`The game is still loading.`);
-    let t = F.save();
-    try {
-      (F.load(e), Hi.verifyMatchSettings(F, ai[z.homeTeam], ai[z.awayTeam], $a()));
-    } finally {
-      F.load(t);
-    }
+    return emu.save();
   },
   afterLoad() {
-    ((Bi = 0), (Ii = null), (Li = 0), __restartRecording(), bi.held.clear());
+    ((lastTs = null), (acc = 0), __restartRecording(), keys.held.clear());
     try {
-      To();
+      drawFrame();
     } catch {}
   },
 });
-globalThis.__setEmuVolume = (v, m) => A.setVolume(v, m);
-globalThis.__getEmuVolume = () => ({ volume: A.volume, muted: A.muted });
+globalThis.__setEmuVolume = (v, m) => audio.setVolume(v, m);
+globalThis.__getEmuVolume = () => ({ volume: audio.volume, muted: audio.muted });
+
+// ---------- replays ----------
 var __rp = null,
   __segs = [],
   __lastSegs = null;
+// A save state loaded mid-game starts a new replay segment that begins from that state.
 function __restartRecording() {
-  let old = ta;
+  let old = recorder;
   if (__rp || !old) {
-    ta = null;
+    recorder = null;
     return;
   }
-  let seg = old.export(null, 1);
-  seg && __segs.push(seg);
-  ta = null;
+  let seg = old.export(1);
+  (seg && __segs.push(seg), (recorder = null));
   try {
-    let st = F.save();
-    ta = new Kr({
+    let st = emu.save();
+    recorder = new Recorder({
       ...old.meta,
       startState: { bytes: new Uint8Array(st.bytes), frame: st.frame },
       startStateHash: null,
@@ -2873,23 +1417,18 @@ function __restartRecording() {
   }
 }
 async function __rpApply() {
-  if (!__rp) return;
-  ta = null;
-  if (__rp.startHash && na !== __rp.startHash) {
-    __rp = null;
-    throw Error(`This replay does not match your ROM or emulator build, so it cannot be played back.`);
-  }
+  if (__rp && ((recorder = null), __rp.startHash && startStateHash !== __rp.startHash))
+    throw ((__rp = null), Error(`This replay does not match your ROM or emulator build, so it cannot be played back.`));
 }
 function __rpDone() {
-  if (__rp.done) return;
-  __rp.done = !0;
-  Y(`Replay finished. Choose End game to return to setup.`);
-  k(`connection-status`).textContent = `Replay finished · ${__rp.n} frames`;
+  __rp.done ||
+    ((__rp.done = !0),
+    setStatus(`Replay finished. Choose End game to return to setup.`),
+    (k(`connection-status`).textContent = `Replay finished · ${__rp.n} frames`));
 }
 function __b64(u8) {
   let out = ``;
-  for (let i = 0; i < u8.length; i += 32768)
-    out += String.fromCharCode.apply(null, u8.subarray(i, i + 32768));
+  for (let i = 0; i < u8.length; i += 32768) out += String.fromCharCode.apply(null, u8.subarray(i, i + 32768));
   return btoa(out);
 }
 function __unb64(s) {
@@ -2899,87 +1438,80 @@ function __unb64(s) {
   return u8;
 }
 async function __pipe(u8, stream) {
-  return new Uint8Array(
-    await new Response(new Blob([u8]).stream().pipeThrough(stream)).arrayBuffer(),
-  );
+  return new Uint8Array(await new Response(new Blob([u8]).stream().pipeThrough(stream)).arrayBuffer());
 }
 async function __saveReplay() {
-  let segs = ta ? [...__segs, ta.export(null, 1)].filter(Boolean) : __lastSegs || [],
+  let segs = recorder ? [...__segs, recorder.export(1)].filter(Boolean) : __lastSegs || [],
     total = segs.reduce((a, g) => a + g.frames, 0);
   if (total < 60) {
-    Y(`Nothing to save yet. Play at least a second of a game first.`);
+    setStatus(`Nothing to save yet. Play at least a second of a game first.`);
     return;
   }
   try {
     let head = segs[0],
       out = [];
-    for (let g of segs) {
-      let state = null;
-      if (g.startState)
-        state = {
-          frame: g.startState.frame,
-          data: __b64(await __pipe(g.startState.bytes, new CompressionStream(`gzip`))),
-        };
-      out.push({ frames: g.frames, inputs: g.inputs, startState: state });
-    }
+    for (let g of segs)
+      out.push({
+        frames: g.frames,
+        inputs: g.inputs,
+        startState: g.startState
+          ? { frame: g.startState.frame, data: __b64(await __pipe(g.startState.bytes, new CompressionStream(`gzip`))) }
+          : null,
+      });
     let obj = {
-      format: `NHL94-REPLAY`,
-      v: 2,
-      created: new Date().toISOString(),
-      platform: head.config?.platform || z.platform,
-      rom: { crc: head.romCrc || null, name: head.romName || `` },
-      coreHash: head.coreHash || null,
-      startHash: head.startStateHash || null,
-      mode: head.mode,
-      side: head.side,
-      frames: total,
-      segments: out,
-    };
-    let base = (head.romName || `nhl94`).replace(/\.[^.]*$/, ``).replace(/[^\w.-]+/g, `_`) || `nhl94`,
+        format: REPLAY_FORMATS[0],
+        v: 2,
+        created: new Date().toISOString(),
+        platform: head.config?.platform || config.platform,
+        rom: { crc: head.romCrc || null, name: head.romName || `` },
+        coreHash: head.coreHash || null,
+        startHash: head.startStateHash || null,
+        frames: total,
+        segments: out,
+      },
+      base = (head.romName || `game`).replace(/\.[^.]*$/, ``).replace(/[^\w.-]+/g, `_`) || `game`,
       d = new Date(),
       p2 = (n) => String(n).padStart(2, `0`),
       stamp = `${d.getFullYear()}${p2(d.getMonth() + 1)}${p2(d.getDate())}-${p2(d.getHours())}${p2(d.getMinutes())}`,
       a = document.createElement(`a`);
-    a.href = URL.createObjectURL(new Blob([JSON.stringify(obj)], { type: `application/json` }));
-    a.download = `${base}-${stamp}.replay`;
-    document.body.append(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 6e4);
-    Y(`Replay saved (${(total / 60).toFixed(0)} seconds, ${total} frames).`);
+    ((a.href = URL.createObjectURL(new Blob([JSON.stringify(obj)], { type: `application/json` }))),
+      (a.download = `${base}-${stamp}.replay`),
+      document.body.append(a),
+      a.click(),
+      a.remove(),
+      setTimeout(() => URL.revokeObjectURL(a.href), 6e4),
+      setStatus(`Replay saved (${(total / 60).toFixed(0)} seconds, ${total} frames).`));
   } catch (e) {
-    Y(`Could not save the replay: ${e.message}`);
+    setStatus(`Could not save the replay: ${e.message}`);
   }
 }
 async function __watchReplay(file) {
   try {
-    if (j !== `lobby`) throw Error(`Return to setup before watching a replay.`);
+    if (phase !== `lobby`) throw Error(`Return to setup before watching a replay.`);
     if (file.size > 3e7) throw Error(`That file is too large to be a replay.`);
     let obj = JSON.parse(await file.text());
-    if (obj?.format !== `NHL94-REPLAY` || obj.v !== 2 || !Array.isArray(obj.segments) || obj.segments.length > 200)
+    if (!REPLAY_FORMATS.includes(obj?.format) || obj.v !== 2 || !Array.isArray(obj.segments) || obj.segments.length > 200)
       throw Error(`This is not a replay file from this site.`);
-    if (!Number.isSafeInteger(obj.frames) || obj.frames < 1 || obj.frames > 4e5)
-      throw Error(`The replay file is damaged.`);
-    if (obj.platform !== z.platform)
-      throw Error(`This replay is for ${{ genesis: `Sega Genesis`, snes: `Super Nintendo` }[obj.platform] || obj.platform}. Switch the system and load that ROM first.`);
-    if (!P) throw Error(`Load your ROM first, then choose the replay.`);
-    let me = __myRom();
-    if (obj.rom?.crc && me.crc !== obj.rom.crc)
-      throw Error(`This replay was recorded with a different ROM (CRC32 ${obj.rom.crc}; yours is ${me.crc}).`);
-    if (obj.coreHash && Ui && obj.coreHash !== Ui)
+    if (!Number.isSafeInteger(obj.frames) || obj.frames < 1 || obj.frames > 4e5) throw Error(`The replay file is damaged.`);
+    if (obj.platform !== config.platform)
+      throw Error(`This replay is for ${PLATFORMS[obj.platform]?.name || obj.platform}. Switch the system and load that ROM first.`);
+    if (!rom) throw Error(`Load your ROM first, then choose the replay.`);
+    let mine = __myRom();
+    if (obj.rom?.crc && mine.crc !== obj.rom.crc)
+      throw Error(`This replay was recorded with a different ROM (CRC32 ${obj.rom.crc}; yours is ${mine.crc}).`);
+    if ((await loadCore(), obj.coreHash && !coreHashes().includes(obj.coreHash)))
       throw Error(`This replay was recorded with a different emulator build.`);
     let p1 = new Uint16Array(obj.frames),
       p2 = new Uint16Array(obj.frames),
       loads = {},
       n = 0;
     for (let g of obj.segments) {
-      if (typeof g?.inputs != `string` || !Number.isSafeInteger(g.frames) || g.frames < 1)
-        throw Error(`The replay file is damaged.`);
-      if (g.startState)
-        loads[n] = {
+      if (typeof g?.inputs != `string` || !Number.isSafeInteger(g.frames) || g.frames < 1) throw Error(`The replay file is damaged.`);
+      g.startState &&
+        (loads[n] = {
           frame: g.startState.frame,
           bytes: await __pipe(__unb64(g.startState.data), new DecompressionStream(`gzip`)),
-        };
+        });
       let m = 0;
       for (let run of g.inputs.split(` `)) {
         let [a, b, c] = run.split(`.`),
@@ -2988,52 +1520,57 @@ async function __watchReplay(file) {
           len = parseInt(c, 36);
         if (!(x >= 0 && x <= 4095 && y >= 0 && y <= 4095 && len >= 1) || m + len > g.frames || n + len > obj.frames)
           throw Error(`The replay file is damaged.`);
-        p1.fill(x, n, n + len);
-        p2.fill(y, n, n + len);
-        n += len;
-        m += len;
+        (p1.fill(x, n, n + len), p2.fill(y, n, n + len), (n += len), (m += len));
       }
       if (m !== g.frames) throw Error(`The replay file is damaged.`);
     }
     if (n !== obj.frames) throw Error(`The replay file is damaged.`);
-    __rp = { n, p1, p2, loads, i: 0, startHash: obj.segments[0]?.startState ? null : obj.startHash || null, done: !1, hashes: {} };
-    Y(`Starting replay…`);
-    await So();
-    if (j === `lobby`) __rp = null;
+    ((__rp = { n, p1, p2, loads, i: 0, startHash: obj.segments[0]?.startState ? null : obj.startHash || null, done: !1, hashes: {} }),
+      setStatus(`Starting replay…`),
+      await startGame(),
+      phase === `lobby` && (__rp = null));
   } catch (e) {
-    __rp = null;
-    Y(e.message || String(e));
+    ((__rp = null), setStatus(e.message || String(e)));
   }
 }
 function __replayUi() {
-  let sv = k(`replay-save`),
-    wt = k(`replay-watch`);
-  sv.disabled = !((ta && __segs.reduce((a, g) => a + g.frames, ta.frames) >= 60) || __lastSegs);
-  wt.disabled = !(j === `lobby` && P && !G && !K);
+  ((k(`replay-save`).disabled = !((recorder && __segs.reduce((a, g) => a + g.frames, recorder.frames) >= 60) || __lastSegs)),
+    (k(`replay-watch`).disabled = !(phase === `lobby` && rom && !loading && !starting)));
 }
-k(`replay-save`).addEventListener(`click`, __saveReplay);
-k(`replay-watch`).addEventListener(`click`, () => k(`replay-file`).click());
-k(`replay-file`).addEventListener(`change`, (e) => {
-  let f = e.target.files[0];
-  ((e.target.value = ``), f && __watchReplay(f));
-});
-setInterval(__replayUi, 700);
+(k(`replay-save`).addEventListener(`click`, __saveReplay),
+  k(`replay-watch`).addEventListener(`click`, () => k(`replay-file`).click()),
+  k(`replay-file`).addEventListener(`change`, (e) => {
+    let f = e.target.files[0];
+    ((e.target.value = ``), f && __watchReplay(f));
+  }),
+  setInterval(__replayUi, 700));
 globalThis.__arenaReplay = {
   get frames() {
-    return ta?.frames ?? 0;
+    return recorder?.frames ?? 0;
   },
   get playback() {
     return __rp ? { i: __rp.i, n: __rp.n, done: __rp.done, hashes: __rp.hashes } : null;
   },
 };
+// Hide the mouse pointer over the game after 2.5 s without movement.
 {
   let wrap = k(`screen-wrap`),
     idle = 0,
     show = () => {
-      (wrap.classList.remove(`cursor-idle`), clearTimeout(idle));
-      idle = setTimeout(() => wrap.classList.add(`cursor-idle`), 2500);
+      (wrap.classList.remove(`cursor-idle`), clearTimeout(idle), (idle = setTimeout(() => wrap.classList.add(`cursor-idle`), 2500)));
     };
   for (let ev of [`pointermove`, `pointerdown`, `wheel`]) wrap.addEventListener(ev, show, { passive: !0 });
   for (let ev of [`fullscreenchange`, `webkitfullscreenchange`]) document.addEventListener(ev, show);
 }
 
+// ---------- start ----------
+(Z(),
+  document.documentElement?.setAttribute(`data-arena-ready`, `true`),
+  (loading = !0),
+  (platformChange = showRomForPlatform()
+    .catch((e) => {
+      ((romError = e?.message || `The ROM could not be loaded.`), (k(`rom-status`).textContent = romError), setStatus(romError));
+    })
+    .finally(() => {
+      ((loading = !1), Z());
+    })));

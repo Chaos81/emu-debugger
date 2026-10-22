@@ -62,7 +62,7 @@ export class SNES {
   save() {
     const M = this.M, size = M._fe_state_size();
     if (this.closed) throw new Error('Emulator is closed.');
-    if (!size) throw new Error('This core does not support rollback.');
+    if (!size) throw new Error('This core does not support save states.');
     if (!this.statePtr) { this.statePtr = M._malloc(size); this.stateSize = size; }
     if (!M._fe_save(this.statePtr, size)) throw new Error('Could not save emulator state.');
     return { bytes: M.HEAPU8.slice(this.statePtr, this.statePtr + size), frame: this.frames };
@@ -74,7 +74,7 @@ export class SNES {
     if (!this.statePtr) this.save();
     if (state.bytes.length !== this.stateSize) throw new Error('Invalid emulator state size.');
     // GPGX unserialize clears its live framebuffer. Preserve the last rendered
-    // picture through rollback and temporary confirmed-score reads, until step().
+    // picture until the next step().
     this.video();
     this.M.HEAPU8.set(state.bytes, this.statePtr);
     if (!this.M._fe_load(this.statePtr, this.stateSize)) throw new Error('Could not restore emulator state.');
@@ -105,13 +105,6 @@ export class SNES {
     }
   }
 
-  /** Verified NHL '94 SNES work RAM; see snes-boot.js for setup fields. */
-  info() {
-    return {period:this.read(0x7E1630,'<u2'),time:this.read(0x7E1632,'<u2'),
-      p1_score:this.read(0x7E178E,'<u2'),p2_score:this.read(0x7E1790,'<u2'),
-      paused:this.read(0x7E15DA,'<u2') !== 0,
-      p1_team:this.read(0x7E1C84,'<u2'),p2_team:this.read(0x7E1C86,'<u2')};
-  }
 
   /** Copy the last frame into ImageData-ready RGBA; returns {data, width, height}. */
   video() {
