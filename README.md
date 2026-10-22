@@ -35,8 +35,11 @@ Open <http://localhost:8000/>. Any static web host works (it also runs from a su
   - Watch list: work-RAM addresses as 8/16/32-bit signed or unsigned values; click a value to edit it
     (decimal or `$hex`); **Freeze** keeps it fixed every frame. Load / save the list as CSV
     (`Label,address[,type]` per line; an optional header row is skipped)
-  - Memory view: 256 bytes per page with ASCII; click a byte to edit it, right-click to freeze it;
-    changed bytes are yellow, frozen bytes blue
+  - Memory view: 256 bytes per page with ASCII; click a byte to edit it; changed bytes are yellow,
+    frozen bytes blue
+  - Right-click menus on registers, watch rows and memory bytes: Send to calculator (a byte, word or
+    dword from memory, in the system's byte order), Freeze / Unfreeze, Edit, Show in memory, Copy,
+    Add to / Remove from the watch list
   - Calculator (toolbar button): a hex calculator in its own window (`calculator.html`). Byte /
     word / dword sizes; hex or decimal input; hex, decimal, signed decimal and binary shown at once,
     with a clickable bit grid; + − × ÷ MOD, AND OR XOR NOT NEG, LSL LSR ASL ASR ROL ROR, and

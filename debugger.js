@@ -172,6 +172,11 @@
     '.hint{color:var(--muted);font-size:12px;margin:.5rem 0 0}' +
     'kbd{font:11px ui-monospace,Menlo,Consolas,monospace;border:1px solid #cbd5e1;border-bottom-width:2px;border-radius:3px;padding:0 4px;background:#fff}' +
     '.foot{padding:0 .8rem .6rem;color:var(--muted);font-size:12px}' +
+    '.ctx{position:fixed;z-index:20;min-width:250px;background:#fff;border:1px solid #cbd5e1;border-radius:6px;box-shadow:0 8px 24px rgba(16,27,49,.18);padding:4px 0}' +
+    '.ctx[hidden]{display:none}.ctx .t{padding:.25rem .8rem .35rem;color:var(--muted);font:11px ui-monospace,Menlo,Consolas,monospace}' +
+    '.ctx button{display:flex;justify-content:space-between;gap:1.5rem;width:100%;border:0;border-radius:0;background:none;padding:.38rem .8rem;text-align:left}' +
+    '.ctx button:hover:not(:disabled),.ctx button:focus{background:#eef2f7;outline:none}.ctx .k{color:var(--muted);font-family:ui-monospace,Menlo,Consolas,monospace}' +
+    '.ctx hr{border:0;border-top:1px solid var(--line);margin:4px 0}' +
     '.stack{display:flex;flex-direction:column;gap:.8rem;min-height:0}.stack>.pane:first-child{flex:none}.stack>.pane:last-child{flex:1}' +
     '.pane h2 .cpu{margin-left:.4rem;font-weight:400;letter-spacing:0;text-transform:none}' +
     '.regs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.15rem .9rem;font:12px/1.6 ui-monospace,Menlo,Consolas,monospace}' +
@@ -198,18 +203,19 @@
       '<p id="msg" class="msg" role="status" aria-live="polite"></p>' +
       '<main class="cols"><div class="stack">' +
       '<section class="pane"><h2>REGISTERS<span id="cpu" class="cpu"></span></h2><div id="regs" class="regs"></div>' +
-      '<p class="hint">As of the end of the last frame. Click an address register to show it in the memory view.</p></section>' +
+      '<p class="hint">As of the end of the last frame. Click an address register to show it in the memory view; right-click any register to send it to the calculator.</p></section>' +
       '<section class="pane"><h2>WATCH</h2>' +
       '<form id="wform" class="row"><input id="waddr" class="addr" placeholder="Address (hex)" aria-label="Address" autocomplete="off"><select id="wtype" aria-label="Value type"></select><input id="wlabel" class="lbl" placeholder="Label (optional)" maxlength="30" aria-label="Label"><button type="submit">Watch</button></form>' +
       '<div class="row"><button id="csvin" type="button" title="Each line: Label, address[, type]">Load CSV…</button><button id="csvout" type="button">Save CSV</button><span class="grow"></span><button id="clear" type="button">Clear all</button><input id="csvfile" type="file" accept=".csv,text/csv,text/plain" hidden></div>' +
       '<div class="scroll"><table id="wtable"><thead><tr><th>NAME</th><th>ADDRESS</th><th>TYPE</th><th>VALUE</th><th>HEX</th><th title="Keep this value fixed">FREEZE</th><th></th></tr></thead><tbody id="wbody"></tbody></table><p id="wempty" class="empty"></p></div>' +
-      '<p class="hint">Click a value to change it (decimal, or hex like <kbd>$1F</kbd>). Freeze keeps the value fixed every frame.</p>' +
+      '<p class="hint">Click a value to change it (decimal, or hex like <kbd>$1F</kbd>). Freeze keeps the value fixed every frame. Right-click a row for more, such as Send to calculator.</p>' +
       '</section></div>' +
       '<section class="pane"><h2>MEMORY</h2>' +
       '<form id="mform" class="row"><button id="mprev" type="button" title="Previous 256 bytes">◀</button><input id="maddr" class="addr" aria-label="Memory address" autocomplete="off"><button type="submit">Go</button><button id="mnext" type="button" title="Next 256 bytes">▶</button><span class="grow"></span><button id="mwatch" type="button" title="Add the first address of this page to the watch list">Watch this address</button></form>' +
       '<div class="scroll"><div id="hexv" class="hexv"></div></div>' +
-      '<p class="hint">Click a byte to edit it (<kbd>Enter</kbd> or <kbd>Tab</kbd> writes, <kbd>Esc</kbd> cancels). Right-click a byte to freeze or unfreeze it. Yellow = changed, blue = frozen.</p>' +
+      '<p class="hint">Click a byte to edit it (<kbd>Enter</kbd> or <kbd>Tab</kbd> writes, <kbd>Esc</kbd> cancels). Right-click a byte to freeze it, or to send a byte, word or dword to the calculator. Yellow = changed, blue = frozen.</p>' +
       '</section></main>' +
+      '<div id="ctx" class="ctx" role="menu" hidden></div>' +
       '<p class="foot"><kbd>F8</kbd> pause / resume · <kbd>F10</kbd> step one frame · <kbd>Shift</kbd>+<kbd>F10</kbd> step N frames. Steps use the controllers’ current buttons. Changing or freezing RAM stops replay recording for that game.</p>');
     doc.close();
 
@@ -218,13 +224,13 @@
       win: w, doc: doc, msg: $('msg'), pause: $('pause'), step1: $('step1'), stepn: $('stepn'), stepN: $('nframes'),
       dot: $('dot'), runstate: $('runstate'), frame: $('frame'), sys: $('sys'),
       wbody: $('wbody'), wtable: $('wtable'), wempty: $('wempty'), wtype: $('wtype'), memAddr: $('maddr'), hexv: $('hexv'),
-      rows: {}, cells: [], editing: null, regs: $('regs'), cpu: $('cpu'), regKind: null, regCells: {}, prevRegs: null
+      rows: {}, cells: [], editing: null, regs: $('regs'), cpu: $('cpu'), menu: $('ctx'), regKind: null, regCells: {}, prevRegs: null
     };
     Object.keys(TYPES).forEach(function (t) { var o = doc.createElement('option'); o.value = t; o.textContent = TYPES[t].label; v.wtype.appendChild(o); });
     v.wtype.value = 'u16';
 
     v.pause.addEventListener('click', togglePause);
-    $('calc').addEventListener('click', openCalculator);
+    $('calc').addEventListener('click', function () { openCalculator(); });
     v.step1.addEventListener('click', function () { step(1); });
     v.stepn.addEventListener('click', function () { step(stepCount()); });
     v.stepN.addEventListener('input', function () { v.stepn.textContent = 'Step ' + stepCount(); });
@@ -309,11 +315,108 @@
     });
     v.hexv.addEventListener('contextmenu', function (e) {
       var b = e.target.closest && e.target.closest('.b'); if (!b) return;
-      e.preventDefault();
-      var a = live(), addr = state.memAddr + +b.dataset.i;
-      setFreeze(addr, 1, !(a && a.isFrozen(addr)));
+      memoryMenu(e, +b.dataset.i);
+    });
+    v.regs.addEventListener('contextmenu', function (e) {
+      var g = e.target.closest && e.target.closest('.rg'); if (!g || !v.prevRegs) return;
+      registerMenu(e, g.querySelector('span').dataset.key);
+    });
+    v.wbody.addEventListener('contextmenu', function (e) {
+      var tr = e.target.closest && e.target.closest('tr'); if (!tr) return;
+      var x = state.watches.filter(function (q) { return String(q.id) === tr.dataset.id; })[0];
+      if (x) watchMenu(e, x);
+    });
+    // close the menu on a click elsewhere, Esc, scrolling or leaving the window; arrows move in it
+    doc.addEventListener('mousedown', function (e) { if (!v.menu.contains(e.target)) hideMenu(); }, true);
+    doc.addEventListener('scroll', hideMenu, true);
+    w.addEventListener('blur', hideMenu);
+    v.menu.addEventListener('keydown', function (e) {
+      var items = [].slice.call(v.menu.querySelectorAll('button:not(:disabled)')), i = items.indexOf(doc.activeElement);
+      if (e.key === 'Escape') { e.preventDefault(); hideMenu(); }
+      else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (items.length) items[(i + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length].focus();
+      }
+      e.stopPropagation();
     });
     return v;
+  }
+
+  // ---------- right-click menus ----------
+  // items: { label, note, run, disabled } or '-' for a divider.
+  function showMenu(e, title, items) {
+    var v = state.view, doc = v.doc, m = v.menu;
+    e.preventDefault();
+    m.textContent = '';
+    if (title) { var t = doc.createElement('div'); t.className = 't'; t.textContent = title; m.appendChild(t); }
+    items.forEach(function (it) {
+      if (it === '-') { m.appendChild(doc.createElement('hr')); return; }
+      var b = doc.createElement('button'), l = doc.createElement('span');
+      b.type = 'button'; b.setAttribute('role', 'menuitem'); b.disabled = !!it.disabled; l.textContent = it.label; b.appendChild(l);
+      if (it.note) { var k = doc.createElement('span'); k.className = 'k'; k.textContent = it.note; b.appendChild(k); }
+      b.addEventListener('click', function () { hideMenu(); it.run(); });
+      m.appendChild(b);
+    });
+    m.hidden = false;
+    var r = m.getBoundingClientRect();
+    m.style.left = Math.max(4, Math.min(e.clientX, v.win.innerWidth - r.width - 4)) + 'px';
+    m.style.top = Math.max(4, Math.min(e.clientY, v.win.innerHeight - r.height - 4)) + 'px';
+    var first = m.querySelector('button:not(:disabled)'); if (first) first.focus();
+  }
+  function hideMenu() { var v = state.view; if (v && !v.menu.hidden) v.menu.hidden = true; }
+
+  function copyText(text) {
+    try {
+      state.view.win.navigator.clipboard.writeText(text).then(function () { say('Copied ' + text + '.'); },
+        function () { say('The browser did not allow copying.', true); });
+    } catch (e) { say('The browser did not allow copying.', true); }
+  }
+  function regBits(r, key) {
+    if (r.cpu === '68000') return key === 'SR' ? 16 : 32;
+    return key === 'DB' || key === 'PB' || key === 'P' ? 8 : 16;
+  }
+  function registerMenu(e, key) {
+    var r = state.view.prevRegs, val = regValue(r, key), bits = regBits(r, key), target = regRamTarget(r, key), text = '$' + hex(val, bits / 4);
+    showMenu(e, key + ' = ' + text, [
+      { label: 'Send to calculator', note: text, run: function () { sendToCalculator(val, bits, key); } },
+      { label: 'Show in memory', note: target === null ? '' : '$' + hex(target, 6), disabled: target === null,
+        run: function () { setMemAddr(target); say('Memory view: $' + hex(target, 6) + ' (' + key + ').'); } },
+      { label: 'Copy value', note: text, run: function () { copyText(text); } }
+    ]);
+  }
+  function watchMenu(e, x) {
+    var a = live(), n = TYPES[x.type].n, raw = a ? valueOf(readBytes(a.emu, x.addr, n), 'u' + n * 8, cfg().big) : null;
+    var frozen = !!a && frozenCount(a, x.addr, n) === n, text = raw === null ? '' : '$' + hex(raw, n * 2);
+    var row = state.view.rows[x.id];
+    showMenu(e, (x.label ? x.label + ' · ' : '') + '$' + hex(x.addr, 6) + ' · ' + x.type, [
+      { label: 'Send to calculator', note: text, disabled: !a, run: function () { sendToCalculator(raw, n * 8, x.label || '$' + hex(x.addr, 6)); } },
+      { label: 'Edit value', disabled: !a, run: function () { if (row) editWatch(x, row.c.val); } },
+      { label: frozen ? 'Unfreeze' : 'Freeze', disabled: !a, run: function () { setFreeze(x.addr, n, !frozen); } },
+      { label: 'Show in memory', note: '$' + hex(x.addr, 6), run: function () { setMemAddr(x.addr); } },
+      '-',
+      { label: 'Remove from watch list', run: function () {
+        if (live()) live().unfreezeRam(x.addr, n);
+        state.watches = state.watches.filter(function (q) { return q !== x; }); save(); renderWatches();
+      } }
+    ]);
+  }
+  function memoryMenu(e, i) {
+    var a = live(), c = cfg(), addr = state.memAddr + i, big = c.big, end = c.base + c.size;
+    var read = function (n) { return a && addr + n <= end ? valueOf(readBytes(a.emu, addr, n), 'u' + n * 8, big) : null; };
+    var frozen = !!a && a.isFrozen(addr);
+    var send = function (n, name) {
+      var v = read(n);
+      return { label: 'Send ' + name + ' to calculator', note: v === null ? '' : '$' + hex(v, n * 2), disabled: v === null,
+        run: function () { sendToCalculator(v, n * 8, '$' + hex(addr, 6) + ' ' + name); } };
+    };
+    showMenu(e, '$' + hex(addr, 6), [
+      { label: frozen ? 'Unfreeze byte' : 'Freeze byte', disabled: !a, run: function () { setFreeze(addr, 1, !frozen); } },
+      { label: 'Edit byte', disabled: !a, run: function () { editByte(i); } },
+      '-',
+      send(1, 'byte'), send(2, 'word'), send(4, 'dword'),
+      '-',
+      { label: 'Add to watch list…', run: function () { var f = state.view.doc.getElementById('waddr'); f.value = hex(addr, 6); f.focus(); } }
+    ]);
   }
 
   // Inline editors. While one is open, the cell it replaces is not repainted.
@@ -561,13 +664,29 @@
   }
   // The hex calculator (calculator.html) in its own window. It is opened from the debugger window,
   // which has the click; reopening only focuses it, so its state is kept.
-  function openCalculator() {
+  // then(calcWindow) runs once the calculator page is ready to receive values.
+  function openCalculator(then) {
     var w = state.view && state.view.win; if (!w) return;
     var url = new URL('calculator.html', location.href).href;
     var c = w.open('', 'emu-calculator', 'width=480,height=860,resizable=yes,scrollbars=yes');
-    if (!c) { say('The pop-up was blocked. Allow pop-ups for this site, then click Calculator again.', true); return; }
+    if (!c) { say('The pop-up was blocked. Allow pop-ups for this site, then try again.', true); return; }
     try { if (c.location.href === 'about:blank') c.location.href = url; } catch (e) { c.location.href = url; }
     c.focus();
+    if (typeof then !== 'function') return;
+    var tries = 0, t = w.setInterval(function () {
+      var ready = false;
+      try { ready = !c.closed && typeof c.calcReceive === 'function'; } catch (e) { /* still loading */ }
+      if (ready) { w.clearInterval(t); then(c); }
+      else if (++tries > 100 || c.closed) { w.clearInterval(t); say('The calculator window did not open.', true); }
+    }, 50);
+  }
+  // Put a value into the calculator (as the next number, so a pending "+" etc. uses it).
+  function sendToCalculator(value, bits, label) {
+    var text = hex(value, bits / 4);
+    openCalculator(function (c) {
+      c.calcReceive(text, bits, label);
+      say('Sent ' + label + ' = $' + text + ' to the calculator.');
+    });
   }
   function isOpen() { return !!(state.view && state.win && !state.win.closed); }
 

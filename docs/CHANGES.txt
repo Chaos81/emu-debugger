@@ -138,3 +138,18 @@ DEBUGGER: HEX CALCULATOR
     Esc (clear). Size, base and the signed setting are remembered.
   The maths is in calculator.js without any page code; every byte-size operation was checked against
   an independent bit-by-bit reference for all input pairs.
+
+DEBUGGER: SEND TO CALCULATOR, RIGHT-CLICK MENUS
+  Right-click a register, a watch row or a memory byte for a menu:
+  - Registers: Send to calculator, Show in memory (address registers pointing into work RAM), Copy value.
+    68000 registers go as dwords (SR as a word); 65816 A X Y S D PC as words, DB PB P as bytes.
+  - Watch rows: Send to calculator (at the watch's size), Edit value, Freeze / Unfreeze, Show in memory,
+    Remove from watch list.
+  - Memory bytes: Freeze / Unfreeze byte, Edit byte, Send byte / word / dword to calculator (read in the
+    system's byte order: big-endian on Genesis, little-endian on SNES; disabled past the end of RAM),
+    Add to watch list.
+  Sending opens the calculator if needed (or reuses the open one without reloading) and switches it to
+  the value's size. The value becomes the next number, so with an operator pending it is the right-hand
+  side: e.g. send D0, press +, send D1, press Enter.
+  Changed: right-clicking a memory byte now opens this menu; Freeze byte is its first item (it used to
+  freeze straight away).

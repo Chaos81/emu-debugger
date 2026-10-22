@@ -355,6 +355,18 @@
     render();
   });
 
+  // Values sent from the debugger (right-click > Send to calculator). The value becomes the next
+  // number, so with "+" pending it is the right-hand side; the size switches to the value's size.
+  root.calcReceive = function (hexText, bits, label) {
+    bits = +bits;
+    if (!/^[0-9a-f]{1,8}$/i.test(String(hexText)) || !SIZES[bits]) return false;
+    if (bits !== c.bits) { c.setSize(bits); buildBits(); persist(); }
+    c.setValue(BigInt('0x' + hexText));
+    if (!c.op) c.expr = label ? 'from ' + String(label).slice(0, 40) : '';
+    render();
+    return true;
+  };
+
   buildBits();
   render();
 })(typeof window !== 'undefined' ? window : globalThis);
