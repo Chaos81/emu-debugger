@@ -59,3 +59,13 @@ CRC32, and every controller input for both players by frame (run-length encoded)
 loaded during the game. Watch replay (setup screen, local mode, ROM loaded) boots that ROM from power-on and
 feeds the recorded inputs, so the game plays out exactly as it did. Online, only confirmed inputs are
 recorded, so rollbacks do not affect the file.
+
+ONLINE PLAY REMOVED (emu-debugger)
+  This copy is local-only. Removed: Host online / Join with room codes, PeerJS signaling and the
+  bundled WebRTC adapter, rollback netcode, ROM CRC32 comparison between players, host player-side
+  choice, chat and the player-name field, connection diagnostics (round trip, jitter, rollback,
+  input delay, stability, transport) and the connection report, the network simulator, the online
+  save-state transfer, and the tournament scheduler / community match queue. Setup is now 2 steps
+  (system and ROM, then Start). Both controller ports are always live, so two players can play on
+  one computer. Reset emulator works in every game. The ROM's CRC32 is shown once it loads.
+  Old .replay and .state files still load.

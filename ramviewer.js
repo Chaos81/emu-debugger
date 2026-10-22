@@ -1,6 +1,6 @@
 // RAM viewer: read-only watch list and hex dump of the running game's work RAM.
 //
-// It never writes to the emulator, so it cannot change the game or desync an online match.
+// It never writes to the emulator, so it cannot change the game.
 // Genesis work RAM is $FF0000-$FFFFFF (64 KiB, big-endian values); SNES work RAM is
 // $7E0000-$7FFFFF (128 KiB, little-endian values). Short addresses such as 1234 are treated
 // as offsets from the start of work RAM.
